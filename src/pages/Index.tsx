@@ -46,7 +46,7 @@ const Index = () => {
           {/* CTA Button */}
           <Button 
             onClick={() => navigate("/check-in")}
-            className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+            className="w-full h-14 text-lg font-semibold bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
           >
             Entrar na Lista de Espera
           </Button>

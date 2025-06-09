@@ -167,7 +167,7 @@ const Status = () => {
           <div className="space-y-3">
             <Button 
               onClick={handleViewMenu}
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+              className="w-full h-12 bg-black text-white hover:bg-gray-800"
             >
               🍽️ Ver Cardápio
             </Button>
