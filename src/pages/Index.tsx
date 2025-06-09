@@ -13,8 +13,8 @@ const Index = () => {
         <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg">
           <span className="text-2xl text-white font-bold">🍽️</span>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">The Cozy Corner</h1>
-        <p className="text-gray-600 text-lg">Welcome! Skip the wait, join our digital queue</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">O Cantinho Aconchegante</h1>
+        <p className="text-gray-600 text-lg">Bem-vindo! Pule a fila e entre na nossa lista digital</p>
       </div>
 
       {/* Main Content */}
@@ -27,19 +27,19 @@ const Index = () => {
               <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                 <span className="text-green-600 text-sm">📱</span>
               </div>
-              <span>Get real-time updates on your phone</span>
+              <span>Receba atualizações em tempo real no seu celular</span>
             </div>
             <div className="flex items-center space-x-3 text-gray-700">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                 <span className="text-blue-600 text-sm">⏱️</span>
               </div>
-              <span>Know exactly when your table is ready</span>
+              <span>Saiba exatamente quando sua mesa estiver pronta</span>
             </div>
             <div className="flex items-center space-x-3 text-gray-700">
               <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
                 <span className="text-purple-600 text-sm">🍕</span>
               </div>
-              <span>Browse our menu while you wait</span>
+              <span>Navegue pelo nosso cardápio enquanto espera</span>
             </div>
           </div>
 
@@ -48,16 +48,16 @@ const Index = () => {
             onClick={() => navigate("/check-in")}
             className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
           >
-            Join Waitlist
+            Entrar na Lista de Espera
           </Button>
 
           {/* Footer Info */}
           <div className="text-center space-y-2">
             <p className="text-sm text-gray-500">
-              Current wait time: <span className="font-semibold text-orange-600">~25 minutes</span>
+              Tempo de espera atual: <span className="font-semibold text-orange-600">~25 minutos</span>
             </p>
             <p className="text-xs text-gray-400">
-              We'll notify you when your table is ready
+              Avisaremos quando sua mesa estiver pronta
             </p>
           </div>
         </div>
