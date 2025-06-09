@@ -31,13 +31,13 @@ const Index = () => {
             </div>
             <div className="flex items-center space-x-3 text-gray-700">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-blue-600 text-sm">⏱️</span>
+                <span className="text-black text-sm">⏱️</span>
               </div>
               <span>Saiba exatamente quando sua mesa estiver pronta</span>
             </div>
             <div className="flex items-center space-x-3 text-gray-700">
               <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                <span className="text-purple-600 text-sm">🍕</span>
+                <span className="text-black text-sm">🍕</span>
               </div>
               <span>Navegue pelo nosso cardápio enquanto espera</span>
             </div>
@@ -54,7 +54,7 @@ const Index = () => {
           {/* Footer Info */}
           <div className="text-center space-y-2">
             <p className="text-sm text-gray-500">
-              Tempo de espera atual: <span className="font-semibold text-orange-600">~25 minutos</span>
+              Tempo de espera atual: <span className="font-semibold text-black">~25 minutos</span>
             </p>
             <p className="text-xs text-gray-400">
               Avisaremos quando sua mesa estiver pronta

@@ -111,7 +111,7 @@ const Status = () => {
           {/* Position & Progress */}
           <div className="bg-white rounded-2xl p-6 shadow-lg space-y-6">
             <div className="text-center">
-              <div className="text-4xl font-bold text-orange-600 mb-2">
+              <div className="text-4xl font-bold text-black mb-2">
                 #{partyData.position}
               </div>
               <p className="text-gray-600">Sua posição na fila</p>
@@ -124,6 +124,26 @@ const Status = () => {
               </div>
               <Progress value={progressPercentage} className="h-3" />
             </div>
+            
+            {/* Status Messages inside the card */}
+            {partyData.position === 0 && (
+              <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-6 text-center">
+                <div className="text-3xl mb-2">🎉</div>
+                <h3 className="text-xl font-bold text-black mb-2">Sua mesa está pronta!</h3>
+                <p className="text-gray-700">Dirija-se à recepção</p>
+                <p className="text-sm text-gray-600 mt-2">
+                  Você tem {partyData.toleranceMinutes} minutos para chegar
+                </p>
+              </div>
+            )}
+            
+            {partyData.position === 1 && (
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-6 text-center">
+                <div className="text-3xl mb-2">⏰</div>
+                <h3 className="text-xl font-bold text-black mb-2">Você é o próximo!</h3>
+                <p className="text-gray-700">Sua mesa ficará pronta em breve</p>
+              </div>
+            )}
             
             {/* Show different content based on position */}
             {partyData.position === 0 ? (
@@ -142,26 +162,6 @@ const Status = () => {
               />
             )}
           </div>
-
-          {/* Status Messages */}
-          {partyData.position === 0 && (
-            <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-6 text-center">
-              <div className="text-3xl mb-2">🎉</div>
-              <h3 className="text-xl font-bold text-green-800 mb-2">Sua mesa está pronta!</h3>
-              <p className="text-green-700">Dirija-se à recepção</p>
-              <p className="text-sm text-green-600 mt-2">
-                Você tem {partyData.toleranceMinutes} minutos para chegar
-              </p>
-            </div>
-          )}
-          
-          {partyData.position === 1 && (
-            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-6 text-center">
-              <div className="text-3xl mb-2">⏰</div>
-              <h3 className="text-xl font-bold text-yellow-800 mb-2">Você é o próximo!</h3>
-              <p className="text-yellow-700">Sua mesa ficará pronta em breve</p>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="space-y-3">

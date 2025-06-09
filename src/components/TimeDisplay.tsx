@@ -26,7 +26,7 @@ const TimeDisplay = ({ initialMinutes, label, isCountdown = false, className = "
 
   return (
     <div className={`text-center ${className}`}>
-      <div className="text-2xl font-bold text-blue-600 mb-1">
+      <div className="text-2xl font-bold text-black mb-1">
         {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
       </div>
       <p className="text-gray-600">{label}</p>
