@@ -5,11 +5,14 @@ import { Progress } from "@/components/ui/progress";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import TurnModal from "@/components/TurnModal";
+import TimeDisplay from "@/components/TimeDisplay";
 
 const Status = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showTurnModal, setShowTurnModal] = useState(false);
   
   // 👋 Mock data - would come from Supabase in real app
   const [partyData, setPartyData] = useState({
@@ -19,7 +22,8 @@ const Status = () => {
     totalInQueue: 8,
     estimatedWait: 25,
     toleranceMinutes: 10, // Time to show up when it's their turn
-    status: "waiting" // waiting, next, ready, seated
+    status: "waiting", // waiting, next, ready, seated
+    restaurantName: "O Cantinho Aconchegante"
   });
 
   // 👋 Real-time updates simulation
@@ -30,11 +34,18 @@ const Status = () => {
         const newPosition = Math.max(0, prev.position - Math.random() * 0.5);
         const newEstimatedWait = Math.max(0, prev.estimatedWait - 2);
         
-        return {
+        const updatedData = {
           ...prev,
           position: Math.floor(newPosition),
           estimatedWait: Math.floor(newEstimatedWait)
         };
+
+        // Show turn modal when position becomes 0
+        if (updatedData.position === 0 && prev.position > 0) {
+          setShowTurnModal(true);
+        }
+
+        return updatedData;
       });
     }, 10000); // Update every 10 seconds
 
@@ -53,6 +64,19 @@ const Status = () => {
 
   const handleViewMenu = () => {
     window.open("https://example.com/menu", "_blank");
+  };
+
+  const handleConfirmTurn = () => {
+    setShowTurnModal(false);
+    toast({
+      title: "Confirmado!",
+      description: "Dirija-se à recepção do restaurante",
+    });
+  };
+
+  const handleCancelTurn = () => {
+    setShowTurnModal(false);
+    handleLeaveQueue();
   };
 
   return (
@@ -103,19 +127,19 @@ const Status = () => {
             
             {/* Show different content based on position */}
             {partyData.position === 0 ? (
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-600 mb-1">
-                  {partyData.toleranceMinutes} minutos
-                </div>
-                <p className="text-gray-600">Tempo para chegar ao restaurante</p>
-              </div>
+              <TimeDisplay
+                initialMinutes={partyData.toleranceMinutes}
+                label="Tempo para chegar ao restaurante"
+                isCountdown={true}
+                className="text-center"
+              />
             ) : (
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600 mb-1">
-                  ~{partyData.estimatedWait} minutos
-                </div>
-                <p className="text-gray-600">Tempo estimado de espera</p>
-              </div>
+              <TimeDisplay
+                initialMinutes={partyData.estimatedWait}
+                label="Tempo estimado de espera"
+                isCountdown={true}
+                className="text-center"
+              />
             )}
           </div>
 
@@ -166,6 +190,15 @@ const Status = () => {
           </div>
         </div>
       </div>
+
+      {/* Turn Modal */}
+      <TurnModal
+        isOpen={showTurnModal}
+        onConfirm={handleConfirmTurn}
+        onCancel={handleCancelTurn}
+        toleranceMinutes={partyData.toleranceMinutes}
+        restaurantName={partyData.restaurantName}
+      />
     </div>
   );
 };
