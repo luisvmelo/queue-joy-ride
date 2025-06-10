@@ -56,6 +56,14 @@ const Index = () => {
             >
               Ver Filas dos Restaurantes
             </Button>
+
+            <Button 
+              onClick={() => navigate("/receptionist")}
+              variant="outline"
+              className="w-full h-14 text-lg font-semibold border-blue-300 text-blue-700 hover:bg-blue-50 shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              🔧 Painel do Recepcionista
+            </Button>
           </div>
 
           {/* Footer Info */}
