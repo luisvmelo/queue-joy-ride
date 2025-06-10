@@ -232,7 +232,7 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{mockAnalytics.averageWaitTime} min</div>
-                  <p className="text-xs text-muted-foreground">+2 min em relação à semana passada</p>
+                  <p className="text-xs text-muted-foreground">+2 min vs. semana passada</p>
                 </CardContent>
               </Card>
               
@@ -243,7 +243,7 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{mockAnalytics.averageAbandonmentTime} min</div>
-                  <p className="text-xs text-green-600">-3 min em relação à semana passada</p>
+                  <p className="text-xs text-green-600">-1 min vs. semana passada</p>
                 </CardContent>
               </Card>
 
@@ -254,7 +254,7 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{mockAnalytics.conversionRate}%</div>
-                  <p className="text-xs text-green-600">+7% em relação à semana passada</p>
+                  <p className="text-xs text-green-600">+5% vs. semana passada</p>
                 </CardContent>
               </Card>
 
@@ -265,7 +265,7 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{mockAnalytics.returningCustomers}</div>
-                  <p className="text-xs text-green-600">+3 em relação à semana passada</p>
+                  <p className="text-xs text-green-600">+3 vs. semana passada</p>
                 </CardContent>
               </Card>
             </div>

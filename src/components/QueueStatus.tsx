@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Users, CheckCircle, XCircle, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
-import { usePositionWaitTime } from "@/hooks/useQueueAnalytics";
 
 interface QueueStatusProps {
   queueData: any[];
@@ -18,9 +17,6 @@ const QueueStatus = ({ queueData, onConfirmArrival, onMarkNoShow }: QueueStatusP
   const currentParty = queueData.find(party => party.status === 'ready') || queueData[0];
   const nextParties = queueData.filter(party => party.status === 'waiting').slice(0, 3);
 
-  // Use historical data for wait time calculation
-  const restaurantId = currentParty?.restaurant_id || "550e8400-e29b-41d4-a716-446655440000";
-  
   useEffect(() => {
     if (currentParty?.notified_ready_at) {
       const notifiedTime = new Date(currentParty.notified_ready_at);
@@ -45,24 +41,6 @@ const QueueStatus = ({ queueData, onConfirmArrival, onMarkNoShow }: QueueStatusP
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const PartyWaitTime = ({ party, index }: { party: any; index: number }) => {
-    const { data: estimatedWaitTime } = usePositionWaitTime(restaurantId, party.queue_position || (index + 1));
-    
-    return (
-      <div className="text-right">
-        <p className="text-sm text-gray-600">
-          {party.phone}
-        </p>
-        <p className="text-xs text-gray-500">
-          Na fila há {Math.floor((new Date().getTime() - new Date(party.joined_at).getTime()) / (1000 * 60))} min
-        </p>
-        <p className="text-xs text-blue-600 font-medium">
-          Previsão: ~{estimatedWaitTime || 15 * (party.queue_position || (index + 1))} min
-        </p>
-      </div>
-    );
   };
 
   if (!queueData.length) {
@@ -157,7 +135,7 @@ const QueueStatus = ({ queueData, onConfirmArrival, onMarkNoShow }: QueueStatusP
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                       <span className="text-blue-600 font-semibold text-sm">
-                        {party.queue_position || (index + 2)}
+                        {index + 2}
                       </span>
                     </div>
                     <div>
@@ -167,7 +145,14 @@ const QueueStatus = ({ queueData, onConfirmArrival, onMarkNoShow }: QueueStatusP
                       </p>
                     </div>
                   </div>
-                  <PartyWaitTime party={party} index={index} />
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">
+                      {party.phone}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Na fila há {Math.floor((new Date().getTime() - new Date(party.joined_at).getTime()) / (1000 * 60))} min
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>

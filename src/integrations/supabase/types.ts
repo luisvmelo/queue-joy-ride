@@ -77,48 +77,6 @@ export type Database = {
           },
         ]
       }
-      queue_position_analytics: {
-        Row: {
-          id: string
-          party_id: string
-          queue_position: number
-          recorded_at: string
-          restaurant_id: string
-          time_to_seat_minutes: number
-        }
-        Insert: {
-          id?: string
-          party_id: string
-          queue_position: number
-          recorded_at?: string
-          restaurant_id: string
-          time_to_seat_minutes: number
-        }
-        Update: {
-          id?: string
-          party_id?: string
-          queue_position?: number
-          recorded_at?: string
-          restaurant_id?: string
-          time_to_seat_minutes?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "queue_position_analytics_party_id_fkey"
-            columns: ["party_id"]
-            isOneToOne: false
-            referencedRelation: "parties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "queue_position_analytics_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       restaurants: {
         Row: {
           avg_seat_time_minutes: number | null
@@ -157,20 +115,6 @@ export type Database = {
       confirm_party_arrival: {
         Args: { party_uuid: string }
         Returns: boolean
-      }
-      get_average_wait_time_by_position: {
-        Args: { restaurant_uuid: string; queue_pos: number }
-        Returns: number
-      }
-      get_restaurant_analytics: {
-        Args: { restaurant_uuid: string }
-        Returns: {
-          avg_wait_time_minutes: number
-          avg_abandonment_time_minutes: number
-          conversion_rate: number
-          peak_hours: Json
-          return_customer_rate: number
-        }[]
       }
       get_restaurant_queue: {
         Args: { restaurant_uuid: string }
