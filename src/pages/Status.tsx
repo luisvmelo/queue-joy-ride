@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +13,7 @@ const Status = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showTurnModal, setShowTurnModal] = useState(false);
+  const [toleranceTimeLeft, setToleranceTimeLeft] = useState(0);
   
   // 👋 Mock data - would come from Supabase in real app
   const [partyData, setPartyData] = useState({
@@ -43,6 +45,32 @@ const Status = () => {
       }));
     }
   }, []);
+
+  // Initialize tolerance time when position becomes 0
+  useEffect(() => {
+    if (partyData.position === 0) {
+      setToleranceTimeLeft(partyData.toleranceMinutes * 60);
+    }
+  }, [partyData.position, partyData.toleranceMinutes]);
+
+  // Shared tolerance countdown
+  useEffect(() => {
+    if (partyData.position === 0 && toleranceTimeLeft > 0) {
+      const interval = setInterval(() => {
+        setToleranceTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            // Auto-remove from queue when time runs out
+            handleLeaveQueue();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [partyData.position, toleranceTimeLeft]);
 
   // 👋 Real-time updates simulation
   useEffect(() => {
@@ -110,7 +138,7 @@ const Status = () => {
           <ArrowLeft className="w-4 h-4" />
           <span>Início</span>
         </Button>
-        <h1 className="text-lg font-semibold text-gray-900">Status da Fila</h1>
+        <h1 className="text-lg font-semibold text-black">Status da Fila</h1>
         <div className="w-16"></div>
       </div>
 
@@ -150,7 +178,7 @@ const Status = () => {
                 <h3 className="text-xl font-bold text-black mb-2">Sua mesa está pronta!</h3>
                 <p className="text-gray-700">Dirija-se à recepção</p>
                 <p className="text-sm text-gray-600 mt-2">
-                  Você tem {partyData.toleranceMinutes} minutos para chegar
+                  Você tem {Math.floor(toleranceTimeLeft / 60)} minutos para chegar
                 </p>
               </div>
             )}
@@ -166,9 +194,8 @@ const Status = () => {
             {/* Show different content based on position */}
             {partyData.position === 0 ? (
               <TimeDisplay
-                initialMinutes={partyData.toleranceMinutes}
+                timeInSeconds={toleranceTimeLeft}
                 label="Tempo para chegar ao restaurante"
-                isCountdown={true}
                 className="text-center"
               />
             ) : (
@@ -214,7 +241,7 @@ const Status = () => {
         isOpen={showTurnModal}
         onConfirm={handleConfirmTurn}
         onCancel={handleCancelTurn}
-        toleranceMinutes={partyData.toleranceMinutes}
+        toleranceTimeLeft={toleranceTimeLeft}
         restaurantName={partyData.restaurantName}
       />
     </div>

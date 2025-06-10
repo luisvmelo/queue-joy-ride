@@ -2,24 +2,41 @@
 import { useState, useEffect } from "react";
 
 interface TimeDisplayProps {
-  initialMinutes: number;
+  initialMinutes?: number;
+  timeInSeconds?: number; // Direct time in seconds for synced display
   label: string;
   isCountdown?: boolean;
   className?: string;
 }
 
-const TimeDisplay = ({ initialMinutes, label, isCountdown = false, className = "" }: TimeDisplayProps) => {
-  const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
+const TimeDisplay = ({ 
+  initialMinutes, 
+  timeInSeconds, 
+  label, 
+  isCountdown = false, 
+  className = "" 
+}: TimeDisplayProps) => {
+  const [timeLeft, setTimeLeft] = useState(() => {
+    if (timeInSeconds !== undefined) return timeInSeconds;
+    return initialMinutes ? initialMinutes * 60 : 0;
+  });
+
+  // Use external time if provided (for synced display)
+  useEffect(() => {
+    if (timeInSeconds !== undefined) {
+      setTimeLeft(timeInSeconds);
+    }
+  }, [timeInSeconds]);
 
   useEffect(() => {
-    if (!isCountdown) return;
+    if (!isCountdown || timeInSeconds !== undefined) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isCountdown]);
+  }, [isCountdown, timeInSeconds]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;

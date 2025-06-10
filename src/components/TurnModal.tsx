@@ -1,5 +1,4 @@
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
@@ -7,35 +6,13 @@ interface TurnModalProps {
   isOpen: boolean;
   onConfirm: () => void;
   onCancel: () => void;
-  toleranceMinutes: number;
+  toleranceTimeLeft: number; // Time in seconds
   restaurantName: string;
 }
 
-const TurnModal = ({ isOpen, onConfirm, onCancel, toleranceMinutes, restaurantName }: TurnModalProps) => {
-  const [timeLeft, setTimeLeft] = useState(toleranceMinutes * 60); // Convert to seconds
-
-  useEffect(() => {
-    if (!isOpen) {
-      setTimeLeft(toleranceMinutes * 60);
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onCancel(); // Auto-cancel when time runs out
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isOpen, toleranceMinutes, onCancel]);
-
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
+const TurnModal = ({ isOpen, onConfirm, onCancel, toleranceTimeLeft, restaurantName }: TurnModalProps) => {
+  const minutes = Math.floor(toleranceTimeLeft / 60);
+  const seconds = toleranceTimeLeft % 60;
 
   if (!isOpen) return null;
 
@@ -50,7 +27,7 @@ const TurnModal = ({ isOpen, onConfirm, onCancel, toleranceMinutes, restaurantNa
         </button>
 
         <div className="space-y-6">
-          <h1 className="text-3xl font-bold text-gray-900">É Sua Vez!</h1>
+          <h1 className="text-3xl font-bold text-black">É Sua Vez!</h1>
           
           <p className="text-lg text-gray-700">
             Sua mesa no {restaurantName} está pronta!
@@ -58,13 +35,13 @@ const TurnModal = ({ isOpen, onConfirm, onCancel, toleranceMinutes, restaurantNa
 
           <div className="flex justify-center space-x-6">
             <div className="bg-gray-100 rounded-xl p-4 min-w-[80px]">
-              <div className="text-3xl font-bold text-gray-900">
+              <div className="text-3xl font-bold text-black">
                 {minutes.toString().padStart(2, '0')}
               </div>
               <div className="text-sm text-gray-600">Minutos</div>
             </div>
             <div className="bg-gray-100 rounded-xl p-4 min-w-[80px]">
-              <div className="text-3xl font-bold text-gray-900">
+              <div className="text-3xl font-bold text-black">
                 {seconds.toString().padStart(2, '0')}
               </div>
               <div className="text-sm text-gray-600">Segundos</div>
