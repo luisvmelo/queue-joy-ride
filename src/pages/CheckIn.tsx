@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const CheckIn = () => {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ const CheckIn = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 👋 Basic validation
+    // Basic validation
     if (!formData.name || !formData.phone || !formData.partySize) {
       toast({
         title: "Informações Incompletas",
@@ -47,22 +48,21 @@ const CheckIn = () => {
     setLoading(true);
     
     try {
-      // 👋 Here we'd submit to Supabase
-      console.log("Submitting party:", formData);
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('parties')
+        .insert({
+          restaurant_id: '550e8400-e29b-41d4-a716-446655440000', // Default restaurant
+          name: formData.name,
+          phone: formData.phone,
+          party_size: partySizeNum,
+          notification_type: formData.notificationType,
+          status: 'waiting'
+        })
+        .select()
+        .single();
       
-      // Save party data to localStorage for demo purposes
-      localStorage.setItem('partyData', JSON.stringify({
-        name: formData.name,
-        partySize: partySizeNum,
-        phone: formData.phone,
-        notificationType: formData.notificationType
-      }));
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo, generate a mock party ID
-      const partyId = "demo-party-123";
+      if (error) throw error;
       
       toast({
         title: "Bem-vindo à lista de espera!",
@@ -70,7 +70,7 @@ const CheckIn = () => {
       });
       
       // Navigate to status page
-      navigate(`/status/${partyId}`);
+      navigate(`/status/${data.id}`);
       
     } catch (error) {
       console.error("Error joining waitlist:", error);

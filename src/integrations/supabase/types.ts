@@ -9,13 +9,135 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      parties: {
+        Row: {
+          arrived_at: string | null
+          confirmed_by_receptionist: boolean | null
+          created_at: string | null
+          id: string
+          joined_at: string | null
+          name: string
+          notification_type: string
+          notified_next_at: string | null
+          notified_ready_at: string | null
+          party_size: number
+          phone: string
+          queue_position: number | null
+          removed_at: string | null
+          restaurant_id: string | null
+          seated_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          arrived_at?: string | null
+          confirmed_by_receptionist?: boolean | null
+          created_at?: string | null
+          id?: string
+          joined_at?: string | null
+          name: string
+          notification_type: string
+          notified_next_at?: string | null
+          notified_ready_at?: string | null
+          party_size: number
+          phone: string
+          queue_position?: number | null
+          removed_at?: string | null
+          restaurant_id?: string | null
+          seated_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          arrived_at?: string | null
+          confirmed_by_receptionist?: boolean | null
+          created_at?: string | null
+          id?: string
+          joined_at?: string | null
+          name?: string
+          notification_type?: string
+          notified_next_at?: string | null
+          notified_ready_at?: string | null
+          party_size?: number
+          phone?: string
+          queue_position?: number | null
+          removed_at?: string | null
+          restaurant_id?: string | null
+          seated_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parties_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurants: {
+        Row: {
+          avg_seat_time_minutes: number | null
+          created_at: string | null
+          id: string
+          menu_url: string | null
+          name: string
+          tolerance_minutes: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          avg_seat_time_minutes?: number | null
+          created_at?: string | null
+          id?: string
+          menu_url?: string | null
+          name: string
+          tolerance_minutes?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          avg_seat_time_minutes?: number | null
+          created_at?: string | null
+          id?: string
+          menu_url?: string | null
+          name?: string
+          tolerance_minutes?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      confirm_party_arrival: {
+        Args: { party_uuid: string }
+        Returns: boolean
+      }
+      get_restaurant_queue: {
+        Args: { restaurant_uuid: string }
+        Returns: {
+          party_id: string
+          name: string
+          phone: string
+          party_size: number
+          status: string
+          queue_position: number
+          joined_at: string
+          notified_ready_at: string
+          tolerance_minutes: number
+        }[]
+      }
+      mark_party_no_show: {
+        Args: { party_uuid: string }
+        Returns: boolean
+      }
+      move_party_to_next_position: {
+        Args: { party_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
