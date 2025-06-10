@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,6 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { useQueueAnalytics } from "@/hooks/useQueueAnalytics";
 
 // Mock data para demonstração
 const mockAnalytics = {
@@ -89,12 +89,6 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'settings' | 'qr'>('dashboard');
-  
-  // Restaurant ID - usando o padrão do seed data
-  const restaurantId = "550e8400-e29b-41d4-a716-446655440000";
-  
-  // Buscar dados reais de analytics
-  const { data: analytics, isLoading: analyticsLoading } = useQueueAnalytics(restaurantId);
   
   // Configurações do restaurante
   const [maxQueueSize, setMaxQueueSize] = useState(30);
@@ -159,70 +153,8 @@ const AdminDashboard = () => {
     },
   };
 
-  // Usar dados reais quando disponíveis, senão usar mock
-  const displayData = analytics || {
-    avg_wait_time_minutes: 28,
-    avg_abandonment_time_minutes: 15,
-    conversion_rate: 85,
-    peak_hours: [],
-    return_customer_rate: 18
-  };
-
-  // Mock data para demonstração de gráficos (pode ser substituído por dados reais futuramente)
-  const mockChartData = {
-    currentQueueSize: 12,
-    peakHours: [
-      { hour: '12:00', customers: 45 },
-      { hour: '13:00', customers: 62 },
-      { hour: '14:00', customers: 38 },
-      { hour: '19:00', customers: 58 },
-      { hour: '20:00', customers: 71 },
-      { hour: '21:00', customers: 42 }
-    ],
-    weeklyTrend: [
-      { day: 'Seg', customers: 65, abandonment: 12 },
-      { day: 'Ter', customers: 78, abandonment: 15 },
-      { day: 'Qua', customers: 82, abandonment: 8 },
-      { day: 'Qui', customers: 94, abandonment: 18 },
-      { day: 'Sex', customers: 108, abandonment: 22 },
-      { day: 'Sáb', customers: 156, abandonment: 28 },
-      { day: 'Dom', customers: 142, abandonment: 24 }
-    ],
-    customerLoyalty: [
-      { frequency: '1 vez', count: 120 },
-      { frequency: '2-3 vezes', count: 85 },
-      { frequency: '4+ vezes', count: 43 }
-    ],
-    ratings: { 
-      average: 4.2, 
-      total: 87,
-      distribution: [
-        { stars: 5, count: 32 },
-        { stars: 4, count: 28 },
-        { stars: 3, count: 15 },
-        { stars: 2, count: 8 },
-        { stars: 1, count: 4 }
-      ]
-    },
-    comparison: {
-      thisWeek: { customers: 485, revenue: 12840, conversion: displayData.conversion_rate },
-      lastWeek: { customers: 423, revenue: 11250, conversion: 78 }
-    }
-  };
-
-  const queueStatus = mockChartData.currentQueueSize >= maxQueueSize ? 'Fechada' : 'Aberta';
-  const queueStatusColor = mockChartData.currentQueueSize >= maxQueueSize ? 'destructive' : 'default';
-
-  if (analyticsLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando analytics...</p>
-        </div>
-      </div>
-    );
-  }
+  const queueStatus = mockAnalytics.currentQueueSize >= maxQueueSize ? 'Fechada' : 'Aberta';
+  const queueStatusColor = mockAnalytics.currentQueueSize >= maxQueueSize ? 'destructive' : 'default';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -278,7 +210,7 @@ const AdminDashboard = () => {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl font-bold">{mockChartData.currentQueueSize}/{maxQueueSize}</p>
+                    <p className="text-2xl font-bold">{mockAnalytics.currentQueueSize}/{maxQueueSize}</p>
                     <p className="text-sm text-gray-500">Pessoas na fila</p>
                   </div>
                   {queueStatus === 'Fechada' && (
@@ -291,7 +223,7 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* KPIs Cards - Usando dados reais */}
+            {/* KPIs Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -299,8 +231,8 @@ const AdminDashboard = () => {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{Math.round(displayData.avg_wait_time_minutes)} min</div>
-                  <p className="text-xs text-muted-foreground">Baseado em dados históricos</p>
+                  <div className="text-2xl font-bold">{mockAnalytics.averageWaitTime} min</div>
+                  <p className="text-xs text-muted-foreground">+2 min em relação à semana passada</p>
                 </CardContent>
               </Card>
               
@@ -310,8 +242,8 @@ const AdminDashboard = () => {
                   <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{Math.round(displayData.avg_abandonment_time_minutes)} min</div>
-                  <p className="text-xs text-green-600">Dados dos últimos 30 dias</p>
+                  <div className="text-2xl font-bold">{mockAnalytics.averageAbandonmentTime} min</div>
+                  <p className="text-xs text-green-600">-3 min em relação à semana passada</p>
                 </CardContent>
               </Card>
 
@@ -321,8 +253,8 @@ const AdminDashboard = () => {
                   <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{Math.round(displayData.conversion_rate)}%</div>
-                  <p className="text-xs text-green-600">Fila para atendimento</p>
+                  <div className="text-2xl font-bold">{mockAnalytics.conversionRate}%</div>
+                  <p className="text-xs text-green-600">+7% em relação à semana passada</p>
                 </CardContent>
               </Card>
 
@@ -332,13 +264,13 @@ const AdminDashboard = () => {
                   <UserPlus className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{Math.round(displayData.return_customer_rate)}</div>
-                  <p className="text-xs text-green-600">Taxa de retorno</p>
+                  <div className="text-2xl font-bold">{mockAnalytics.returningCustomers}</div>
+                  <p className="text-xs text-green-600">+3 em relação à semana passada</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Charts - Mantendo dados mockados para demonstração */}
+            {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -346,7 +278,7 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={chartConfig}>
-                    <BarChart data={mockChartData.peakHours} width={400} height={300}>
+                    <BarChart data={mockAnalytics.peakHours} width={400} height={300}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="hour" />
                       <YAxis />
@@ -363,7 +295,7 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={chartConfig}>
-                    <LineChart data={mockChartData.weeklyTrend} width={400} height={300}>
+                    <LineChart data={mockAnalytics.weeklyTrend} width={400} height={300}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="day" />
                       <YAxis />
@@ -386,7 +318,7 @@ const AdminDashboard = () => {
                   <ChartContainer config={chartConfig}>
                     <PieChart width={400} height={300}>
                       <Pie
-                        data={mockChartData.customerLoyalty}
+                        data={mockAnalytics.customerLoyalty}
                         cx={200}
                         cy={150}
                         labelLine={false}
@@ -395,7 +327,7 @@ const AdminDashboard = () => {
                         dataKey="count"
                         label={({ frequency, percent }) => `${frequency} ${(percent * 100).toFixed(0)}%`}
                       >
-                        {mockChartData.customerLoyalty.map((entry, index) => (
+                        {mockAnalytics.customerLoyalty.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={`hsl(${index * 120}, 70%, 50%)`} />
                         ))}
                       </Pie>
@@ -413,21 +345,21 @@ const AdminDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-2xl font-bold flex items-center space-x-2">
-                        <span>{mockChartData.ratings.average}</span>
+                        <span>{mockAnalytics.ratings.average}</span>
                         <Star className="w-5 h-5 text-yellow-500 fill-current" />
                       </p>
-                      <p className="text-sm text-gray-500">({mockChartData.ratings.total} avaliações)</p>
+                      <p className="text-sm text-gray-500">({mockAnalytics.ratings.total} avaliações)</p>
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    {mockChartData.ratings.distribution.map((rating) => (
+                    {mockAnalytics.ratings.distribution.map((rating) => (
                       <div key={rating.stars} className="flex items-center space-x-2">
                         <span className="text-sm w-8">{rating.stars}★</span>
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
                           <div 
                             className="bg-yellow-500 h-2 rounded-full" 
-                            style={{ width: `${(rating.count / mockChartData.ratings.total) * 100}%` }}
+                            style={{ width: `${(rating.count / mockAnalytics.ratings.total) * 100}%` }}
                           />
                         </div>
                         <span className="text-sm w-8">{rating.count}</span>
@@ -450,14 +382,14 @@ const AdminDashboard = () => {
                     <div className="space-y-1">
                       <div className="flex justify-between">
                         <span className="text-sm">Esta semana:</span>
-                        <span className="font-medium">{mockChartData.comparison.thisWeek.customers}</span>
+                        <span className="font-medium">{mockAnalytics.comparison.thisWeek.customers}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm">Semana passada:</span>
-                        <span className="font-medium">{mockChartData.comparison.lastWeek.customers}</span>
+                        <span className="font-medium">{mockAnalytics.comparison.lastWeek.customers}</span>
                       </div>
                       <div className="text-green-600 text-sm font-medium">
-                        +{((mockChartData.comparison.thisWeek.customers / mockChartData.comparison.lastWeek.customers - 1) * 100).toFixed(1)}%
+                        +{((mockAnalytics.comparison.thisWeek.customers / mockAnalytics.comparison.lastWeek.customers - 1) * 100).toFixed(1)}%
                       </div>
                     </div>
                   </div>
@@ -467,14 +399,14 @@ const AdminDashboard = () => {
                     <div className="space-y-1">
                       <div className="flex justify-between">
                         <span className="text-sm">Esta semana:</span>
-                        <span className="font-medium">R$ {mockChartData.comparison.thisWeek.revenue.toLocaleString()}</span>
+                        <span className="font-medium">R$ {mockAnalytics.comparison.thisWeek.revenue.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm">Semana passada:</span>
-                        <span className="font-medium">R$ {mockChartData.comparison.lastWeek.revenue.toLocaleString()}</span>
+                        <span className="font-medium">R$ {mockAnalytics.comparison.lastWeek.revenue.toLocaleString()}</span>
                       </div>
                       <div className="text-green-600 text-sm font-medium">
-                        +{((mockChartData.comparison.thisWeek.revenue / mockChartData.comparison.lastWeek.revenue - 1) * 100).toFixed(1)}%
+                        +{((mockAnalytics.comparison.thisWeek.revenue / mockAnalytics.comparison.lastWeek.revenue - 1) * 100).toFixed(1)}%
                       </div>
                     </div>
                   </div>
@@ -484,14 +416,14 @@ const AdminDashboard = () => {
                     <div className="space-y-1">
                       <div className="flex justify-between">
                         <span className="text-sm">Esta semana:</span>
-                        <span className="font-medium">{mockChartData.comparison.thisWeek.conversion}%</span>
+                        <span className="font-medium">{mockAnalytics.comparison.thisWeek.conversion}%</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm">Semana passada:</span>
-                        <span className="font-medium">{mockChartData.comparison.lastWeek.conversion}%</span>
+                        <span className="font-medium">{mockAnalytics.comparison.lastWeek.conversion}%</span>
                       </div>
                       <div className="text-green-600 text-sm font-medium">
-                        +{(mockChartData.comparison.thisWeek.conversion - mockChartData.comparison.lastWeek.conversion).toFixed(1)}%
+                        +{(mockAnalytics.comparison.thisWeek.conversion - mockAnalytics.comparison.lastWeek.conversion).toFixed(1)}%
                       </div>
                     </div>
                   </div>
@@ -754,5 +686,3 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-
-</edits_to_apply>
