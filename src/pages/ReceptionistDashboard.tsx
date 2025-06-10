@@ -108,6 +108,52 @@ const ReceptionistDashboard = () => {
     }
   };
 
+  const handleSendNotification = async (partyId: string, message: string) => {
+    try {
+      // Find the party to get their contact info
+      const party = queueData.find(p => p.party_id === partyId);
+      if (!party) {
+        throw new Error('Pessoa não encontrada na fila');
+      }
+
+      // Here you would integrate with your notification service
+      // For now, we'll just show a toast to simulate the notification
+      console.log(`Sending notification to ${party.name} (${party.phone}): ${message}`);
+      
+      toast({
+        title: "Notificação enviada",
+        description: `Mensagem enviada para ${party.name}: "${message}"`,
+      });
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível enviar a notificação",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSendBulkNotification = async (message: string) => {
+    try {
+      // Here you would integrate with your notification service to send to all
+      // For now, we'll just show a toast to simulate the bulk notification
+      console.log(`Sending bulk notification to ${queueData.length} people: ${message}`);
+      
+      toast({
+        title: "Notificação enviada",
+        description: `Mensagem enviada para todas as ${queueData.length} pessoas na fila: "${message}"`,
+      });
+    } catch (error) {
+      console.error('Error sending bulk notification:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível enviar a notificação",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -182,6 +228,8 @@ const ReceptionistDashboard = () => {
             queueData={queueData}
             onConfirmArrival={handleConfirmArrival}
             onMarkNoShow={handleMarkNoShow}
+            onSendNotification={handleSendNotification}
+            onSendBulkNotification={handleSendBulkNotification}
           />
         )}
 
