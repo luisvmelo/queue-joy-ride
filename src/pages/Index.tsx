@@ -10,10 +10,14 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex flex-col">
       {/* Header */}
       <div className="text-center pt-12 pb-8">
-        <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg">
-          <span className="text-2xl text-white font-bold">🍽️</span>
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center shadow-lg">
+          <img 
+            src="/lovable-uploads/ca1d7cab-2914-437e-9158-d28c7bccb4f4.png" 
+            alt="Linup Logo" 
+            className="w-full h-full object-contain"
+          />
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">O Cantinho Aconchegante</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Linup</h1>
         <p className="text-gray-600 text-lg">Bem-vindo! Pule a fila e entre na nossa lista digital</p>
       </div>
 
@@ -43,13 +47,23 @@ const Index = () => {
             </div>
           </div>
 
-          {/* CTA Button */}
-          <Button 
-            onClick={() => navigate("/check-in")}
-            className="w-full h-14 text-lg font-semibold bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-          >
-            Entrar na Lista de Espera
-          </Button>
+          {/* CTA Buttons */}
+          <div className="space-y-3">
+            <Button 
+              onClick={() => navigate("/check-in")}
+              className="w-full h-14 text-lg font-semibold bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+            >
+              Entrar na Lista de Espera
+            </Button>
+
+            <Button 
+              onClick={() => navigate("/restaurants")}
+              variant="outline"
+              className="w-full h-14 text-lg font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Ver Filas dos Restaurantes
+            </Button>
+          </div>
 
           {/* Footer Info */}
           <div className="text-center space-y-2">
