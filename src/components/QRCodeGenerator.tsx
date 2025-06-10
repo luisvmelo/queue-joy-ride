@@ -42,7 +42,7 @@ const QRCodeGenerator = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <QrCode className="w-5 h-5" />
-            <span>QR Code para Check-in</span>
+            <span>QR Code Atual</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center">
@@ -74,36 +74,36 @@ const QRCodeGenerator = () => {
       {/* Instructions */}
       <Card>
         <CardHeader>
-          <CardTitle>Como usar o QR Code</CardTitle>
+          <CardTitle>QR Code da Administração</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-start space-x-3">
             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-600 font-semibold text-sm">1</span>
+              <span className="text-blue-600 font-semibold text-sm">📋</span>
             </div>
             <div>
-              <h3 className="font-medium">Posicione o QR Code</h3>
-              <p className="text-gray-600 text-sm">Coloque o QR Code em local visível na entrada do restaurante</p>
+              <h3 className="font-medium">QR Code Centralizado</h3>
+              <p className="text-gray-600 text-sm">Este QR Code é gerado e controlado pela administração</p>
             </div>
           </div>
 
           <div className="flex items-start space-x-3">
             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-600 font-semibold text-sm">2</span>
+              <span className="text-blue-600 font-semibold text-sm">🔄</span>
             </div>
             <div>
-              <h3 className="font-medium">Clientes escaneiam</h3>
-              <p className="text-gray-600 text-sm">Os clientes usam a câmera do celular para escanear o código</p>
+              <h3 className="font-medium">Atualização Automática</h3>
+              <p className="text-gray-600 text-sm">Sempre que a administração gera um novo QR Code, este é atualizado automaticamente</p>
             </div>
           </div>
 
           <div className="flex items-start space-x-3">
             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-600 font-semibold text-sm">3</span>
+              <span className="text-blue-600 font-semibold text-sm">📱</span>
             </div>
             <div>
-              <h3 className="font-medium">Entrada automática</h3>
-              <p className="text-gray-600 text-sm">Eles são direcionados automaticamente para a página de check-in</p>
+              <h3 className="font-medium">Uso na recepção</h3>
+              <p className="text-gray-600 text-sm">Use este QR Code para auxiliar clientes que não conseguiram escanear o QR Code impresso</p>
             </div>
           </div>
 

@@ -9,6 +9,7 @@ import CheckIn from "./pages/CheckIn";
 import Status from "./pages/Status";
 import Restaurants from "./pages/Restaurants";
 import ReceptionistDashboard from "./pages/ReceptionistDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/status/:id" element={<Status />} />
           <Route path="/restaurants" element={<Restaurants />} />
           <Route path="/receptionist" element={<ReceptionistDashboard />} />
+          <Route path="/admin" element={<AdminDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
