@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -7,12 +6,16 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import TurnModal from "@/components/TurnModal";
 import TimeDisplay from "@/components/TimeDisplay";
+import LeaveQueueConfirmation from "@/components/LeaveQueueConfirmation";
+import ThankYouScreen from "@/components/ThankYouScreen";
 
 const Status = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showTurnModal, setShowTurnModal] = useState(false);
+  const [showLeaveConfirmation, setShowLeaveConfirmation] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
   const [toleranceTimeLeft, setToleranceTimeLeft] = useState(0);
   
   // 👋 Mock data - would come from Supabase in real app
@@ -101,11 +104,25 @@ const Status = () => {
   const progressPercentage = ((partyData.totalInQueue - partyData.position) / partyData.totalInQueue) * 100;
 
   const handleLeaveQueue = () => {
+    setShowLeaveConfirmation(true);
+  };
+
+  const handleCancelLeave = () => {
+    setShowLeaveConfirmation(false);
+  };
+
+  const handleConfirmLeave = () => {
+    setShowLeaveConfirmation(false);
+    setShowThankYou(true);
     toast({
       title: "Removido da lista",
       description: "Você foi removido da fila",
     });
-    navigate("/");
+  };
+
+  const handleJoinAgain = () => {
+    setShowThankYou(false);
+    navigate("/check-in");
   };
 
   const handleViewMenu = () => {
@@ -242,6 +259,21 @@ const Status = () => {
         onConfirm={handleConfirmTurn}
         onCancel={handleCancelTurn}
         toleranceTimeLeft={toleranceTimeLeft}
+        restaurantName={partyData.restaurantName}
+      />
+
+      {/* Leave Queue Confirmation */}
+      <LeaveQueueConfirmation
+        isOpen={showLeaveConfirmation}
+        onCancel={handleCancelLeave}
+        onConfirm={handleConfirmLeave}
+        restaurantName={partyData.restaurantName}
+      />
+
+      {/* Thank You Screen */}
+      <ThankYouScreen
+        isOpen={showThankYou}
+        onJoinAgain={handleJoinAgain}
         restaurantName={partyData.restaurantName}
       />
     </div>
