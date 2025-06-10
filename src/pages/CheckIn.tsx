@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +38,14 @@ const CheckIn = () => {
     try {
       // 👋 Here we'd submit to Supabase
       console.log("Submitting party:", formData);
+      
+      // Save party data to localStorage for demo purposes
+      localStorage.setItem('partyData', JSON.stringify({
+        name: formData.name,
+        partySize: parseInt(formData.partySize),
+        phone: formData.phone,
+        notificationType: formData.notificationType
+      }));
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));

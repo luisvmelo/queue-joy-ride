@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -16,7 +15,7 @@ const Status = () => {
   
   // 👋 Mock data - would come from Supabase in real app
   const [partyData, setPartyData] = useState({
-    name: "João Silva",
+    name: "", // Will be set from localStorage
     partySize: 4,
     position: 3,
     totalInQueue: 8,
@@ -25,6 +24,25 @@ const Status = () => {
     status: "waiting", // waiting, next, ready, seated
     restaurantName: "O Cantinho Aconchegante"
   });
+
+  // Load party data from localStorage (simulating real data)
+  useEffect(() => {
+    const savedPartyData = localStorage.getItem('partyData');
+    if (savedPartyData) {
+      const parsed = JSON.parse(savedPartyData);
+      setPartyData(prev => ({
+        ...prev,
+        name: parsed.name || "Usuário",
+        partySize: parsed.partySize || 4
+      }));
+    } else {
+      // Fallback if no data saved
+      setPartyData(prev => ({
+        ...prev,
+        name: "Usuário"
+      }));
+    }
+  }, []);
 
   // 👋 Real-time updates simulation
   useEffect(() => {
@@ -103,7 +121,7 @@ const Status = () => {
           {/* Party Info */}
           <div className="bg-white rounded-2xl p-6 shadow-lg">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">Olá {partyData.name}! 👋</h2>
+              <h2 className="text-2xl font-bold text-black">Olá {partyData.name}! 👋</h2>
               <p className="text-gray-600">Grupo de {partyData.partySize} pessoas</p>
             </div>
           </div>
