@@ -75,18 +75,6 @@ const CurrentQueue = ({
     setShowNotificationPanel(false);
   };
 
-  if (!queueData.length) {
-    return (
-      <Card>
-        <CardContent className="text-center py-12">
-          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Fila vazia</h3>
-          <p className="text-gray-600">Quando alguém entrar na lista, aparecerá aqui</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <Card>
@@ -116,7 +104,7 @@ const CurrentQueue = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Search Bar */}
+          {/* Search Bar - Always visible */}
           <div className="mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -127,14 +115,14 @@ const CurrentQueue = ({
                 className="pl-10"
               />
             </div>
-            {searchTerm && (
+            {searchTerm && queueData.length > 0 && (
               <p className="text-sm text-gray-600 mt-2">
                 {filteredQueueData.length} {filteredQueueData.length === 1 ? 'resultado encontrado' : 'resultados encontrados'}
               </p>
             )}
           </div>
 
-          {/* Notification Panel */}
+          {/* Notification Panel - Always visible when opened */}
           {showNotificationPanel && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h4 className="font-medium text-blue-900 mb-3">
@@ -167,91 +155,102 @@ const CurrentQueue = ({
             </div>
           )}
 
-          <div className="space-y-4">
-            {filteredQueueData.map((party, index) => (
-              <div 
-                key={party.party_id}
-                className={`p-4 border rounded-lg ${
-                  party.status === 'ready' 
-                    ? 'border-orange-200 bg-orange-50' 
-                    : 'border-gray-200 bg-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      party.status === 'ready' 
-                        ? 'bg-orange-100 text-orange-600' 
-                        : 'bg-blue-100 text-blue-600'
-                    }`}>
-                      <span className="font-semibold">{party.queue_position}</span>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">{party.name}</h3>
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <span className="flex items-center space-x-1">
-                          <Phone className="w-4 h-4" />
-                          <span>{party.phone}</span>
-                        </span>
-                        <span className="flex items-center space-x-1">
-                          <Users className="w-4 h-4" />
-                          <span>{party.party_size} {party.party_size === 1 ? 'pessoa' : 'pessoas'}</span>
-                        </span>
-                        <span className="flex items-center space-x-1">
-                          <Clock className="w-4 h-4" />
-                          <span>há {formatWaitTime(party.joined_at)}</span>
-                        </span>
+          {!queueData.length ? (
+            <div className="text-center py-12">
+              <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Fila vazia</h3>
+              <p className="text-gray-600 mb-4">Quando alguém entrar na lista, aparecerá aqui</p>
+              <p className="text-sm text-gray-500">
+                Você pode usar a busca e as opções de notificação mesmo quando há pessoas na fila
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredQueueData.map((party, index) => (
+                <div 
+                  key={party.party_id}
+                  className={`p-4 border rounded-lg ${
+                    party.status === 'ready' 
+                      ? 'border-orange-200 bg-orange-50' 
+                      : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        party.status === 'ready' 
+                          ? 'bg-orange-100 text-orange-600' 
+                          : 'bg-blue-100 text-blue-600'
+                      }`}>
+                        <span className="font-semibold">{party.queue_position}</span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">{party.name}</h3>
+                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                          <span className="flex items-center space-x-1">
+                            <Phone className="w-4 h-4" />
+                            <span>{party.phone}</span>
+                          </span>
+                          <span className="flex items-center space-x-1">
+                            <Users className="w-4 h-4" />
+                            <span>{party.party_size} {party.party_size === 1 ? 'pessoa' : 'pessoas'}</span>
+                          </span>
+                          <span className="flex items-center space-x-1">
+                            <Clock className="w-4 h-4" />
+                            <span>há {formatWaitTime(party.joined_at)}</span>
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center space-x-2">
+                      {getStatusBadge(party.status)}
+                      <Button
+                        onClick={() => {
+                          setSelectedPartyForNotification(party.party_id);
+                          setShowNotificationPanel(true);
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {getStatusBadge(party.status)}
-                    <Button
-                      onClick={() => {
-                        setSelectedPartyForNotification(party.party_id);
-                        setShowNotificationPanel(true);
-                      }}
-                      size="sm"
-                      variant="outline"
-                      className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+                  {party.status === 'ready' && (
+                    <div className="flex space-x-2 pt-3 border-t">
+                      <Button 
+                        onClick={() => onConfirmArrival(party.party_id)}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Confirmar
+                      </Button>
+                      <Button 
+                        onClick={() => onMarkNoShow(party.party_id)}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        <XCircle className="w-4 h-4 mr-1" />
+                        Ausente
+                      </Button>
+                    </div>
+                  )}
+
+                  {party.notified_ready_at && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      Notificado às {new Date(party.notified_ready_at).toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  )}
                 </div>
-
-                {party.status === 'ready' && (
-                  <div className="flex space-x-2 pt-3 border-t">
-                    <Button 
-                      onClick={() => onConfirmArrival(party.party_id)}
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Confirmar
-                    </Button>
-                    <Button 
-                      onClick={() => onMarkNoShow(party.party_id)}
-                      size="sm"
-                      variant="destructive"
-                    >
-                      <XCircle className="w-4 h-4 mr-1" />
-                      Ausente
-                    </Button>
-                  </div>
-                )}
-
-                {party.notified_ready_at && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    Notificado às {new Date(party.notified_ready_at).toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
