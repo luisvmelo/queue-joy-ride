@@ -8,6 +8,7 @@ import TurnModal from "@/components/TurnModal";
 import TimeDisplay from "@/components/TimeDisplay";
 import LeaveQueueConfirmation from "@/components/LeaveQueueConfirmation";
 import ThankYouScreen from "@/components/ThankYouScreen";
+import NoShowScreen from "@/components/NoShowScreen";
 
 const Status = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +17,7 @@ const Status = () => {
   const [showTurnModal, setShowTurnModal] = useState(false);
   const [showLeaveConfirmation, setShowLeaveConfirmation] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
+  const [showNoShow, setShowNoShow] = useState(false);
   const [toleranceTimeLeft, setToleranceTimeLeft] = useState(0);
   
   // 👋 Mock data - would come from Supabase in real app
@@ -25,7 +27,7 @@ const Status = () => {
     position: 3,
     totalInQueue: 8,
     estimatedWait: 25,
-    toleranceMinutes: 10, // Time to show up when it's their turn
+    toleranceMinutes: 2, // Changed from 10 to 2 minutes
     status: "waiting", // waiting, next, ready, seated
     restaurantName: "O Cantinho Aconchegante"
   });
@@ -56,15 +58,16 @@ const Status = () => {
     }
   }, [partyData.position, partyData.toleranceMinutes]);
 
-  // Shared tolerance countdown
+  // Updated tolerance countdown to show NoShow screen when time runs out
   useEffect(() => {
     if (partyData.position === 0 && toleranceTimeLeft > 0) {
       const interval = setInterval(() => {
         setToleranceTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(interval);
-            // Auto-remove from queue when time runs out
-            handleLeaveQueue();
+            // Show NoShow screen when time runs out
+            setShowTurnModal(false);
+            setShowNoShow(true);
             return 0;
           }
           return prev - 1;
@@ -140,6 +143,22 @@ const Status = () => {
   const handleCancelTurn = () => {
     setShowTurnModal(false);
     handleLeaveQueue();
+  };
+
+  const handleRejoinQueue = () => {
+    setShowNoShow(false);
+    // Update position to next available (simulate being moved to position 2)
+    setPartyData(prev => ({
+      ...prev,
+      position: prev.position + 1,
+      estimatedWait: 15 // Reset estimated wait time
+    }));
+    // Reset tolerance time
+    setToleranceTimeLeft(0);
+    toast({
+      title: "Reinserido na fila",
+      description: `Você foi colocado na posição #${partyData.position + 1}`,
+    });
   };
 
   return (
@@ -275,6 +294,14 @@ const Status = () => {
         isOpen={showThankYou}
         onJoinAgain={handleJoinAgain}
         restaurantName={partyData.restaurantName}
+      />
+
+      {/* No Show Screen */}
+      <NoShowScreen
+        isOpen={showNoShow}
+        onRejoinQueue={handleRejoinQueue}
+        restaurantName={partyData.restaurantName}
+        newPosition={partyData.position + 1}
       />
     </div>
   );
