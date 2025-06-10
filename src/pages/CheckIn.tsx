@@ -1,8 +1,8 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -33,6 +33,17 @@ const CheckIn = () => {
       return;
     }
 
+    // Validate party size is a positive number
+    const partySizeNum = parseInt(formData.partySize);
+    if (isNaN(partySizeNum) || partySizeNum < 1) {
+      toast({
+        title: "Tamanho do grupo inválido",
+        description: "Por favor, insira um número válido de pessoas",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     
     try {
@@ -42,7 +53,7 @@ const CheckIn = () => {
       // Save party data to localStorage for demo purposes
       localStorage.setItem('partyData', JSON.stringify({
         name: formData.name,
-        partySize: parseInt(formData.partySize),
+        partySize: partySizeNum,
         phone: formData.phone,
         notificationType: formData.notificationType
       }));
@@ -123,22 +134,16 @@ const CheckIn = () => {
 
             {/* Party Size */}
             <div className="space-y-2">
-              <Label>Tamanho do Grupo *</Label>
-              <Select 
-                value={formData.partySize} 
-                onValueChange={(value) => setFormData({...formData, partySize: value})}
-              >
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Quantas pessoas?" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[1,2,3,4,5,6,7,8].map(num => (
-                    <SelectItem key={num} value={num.toString()}>
-                      {num} {num === 1 ? 'pessoa' : 'pessoas'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="partySize">Tamanho do Grupo *</Label>
+              <Input
+                id="partySize"
+                type="number"
+                min="1"
+                placeholder="Quantas pessoas?"
+                value={formData.partySize}
+                onChange={(e) => setFormData({...formData, partySize: e.target.value})}
+                className="h-12"
+              />
             </div>
 
             {/* Notification Preference */}

@@ -10,13 +10,6 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex flex-col">
       {/* Header */}
       <div className="text-center pt-12 pb-8">
-        <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center shadow-lg">
-          <img 
-            src="/lovable-uploads/ca1d7cab-2914-437e-9158-d28c7bccb4f4.png" 
-            alt="Linup Logo" 
-            className="w-full h-full object-contain"
-          />
-        </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Linup</h1>
         <p className="text-gray-600 text-lg">Bem-vindo! Pule a fila e entre na nossa lista digital</p>
       </div>

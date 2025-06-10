@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -19,6 +20,7 @@ const Status = () => {
   const [showThankYou, setShowThankYou] = useState(false);
   const [showNoShow, setShowNoShow] = useState(false);
   const [toleranceTimeLeft, setToleranceTimeLeft] = useState(0);
+  const [isLeavingFromTurnModal, setIsLeavingFromTurnModal] = useState(false);
   
   // 👋 Mock data - would come from Supabase in real app
   const [partyData, setPartyData] = useState({
@@ -112,10 +114,17 @@ const Status = () => {
 
   const handleCancelLeave = () => {
     setShowLeaveConfirmation(false);
+    // If we were leaving from the turn modal, go back to it
+    if (isLeavingFromTurnModal) {
+      setIsLeavingFromTurnModal(false);
+      setShowTurnModal(true);
+    }
   };
 
   const handleConfirmLeave = () => {
     setShowLeaveConfirmation(false);
+    setIsLeavingFromTurnModal(false);
+    setShowTurnModal(false);
     setShowThankYou(true);
     toast({
       title: "Removido da lista",
@@ -142,6 +151,7 @@ const Status = () => {
 
   const handleCancelTurn = () => {
     setShowTurnModal(false);
+    setIsLeavingFromTurnModal(true);
     handleLeaveQueue();
   };
 
