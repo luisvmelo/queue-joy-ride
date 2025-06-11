@@ -1,9 +1,9 @@
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import TurnModal from "@/components/TurnModal";
 import TimeDisplay from "@/components/TimeDisplay";
@@ -11,165 +11,146 @@ import LeaveQueueConfirmation from "@/components/LeaveQueueConfirmation";
 import ThankYouScreen from "@/components/ThankYouScreen";
 import NoShowScreen from "@/components/NoShowScreen";
 
+import { supabase } from "@/integrations/supabase/client";
+
+type Party = {
+  id: string;
+  name: string;
+  phone: string;
+  party_size: number;
+  queue_position: number | null;
+  status: string; // waiting, next, ready, seated, no_show
+  tolerance_minutes: number | null;
+  restaurant_id: string;
+  restaurant_name?: string; // opcional (pode vir via view)
+};
+
 const Status = () => {
-  const { id } = useParams<{ id: string }>();
+  /* ───────────────────────── params / hooks ───────────────────────── */
+  const { partyId } = useParams<{ partyId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  /* ───────────────────────── local state ───────────────────────── */
+  const [party, setParty] = useState<Party | null>(null);
+
   const [showTurnModal, setShowTurnModal] = useState(false);
   const [showLeaveConfirmation, setShowLeaveConfirmation] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [showNoShow, setShowNoShow] = useState(false);
   const [toleranceTimeLeft, setToleranceTimeLeft] = useState(0);
   const [isLeavingFromTurnModal, setIsLeavingFromTurnModal] = useState(false);
-  
-  // 👋 Mock data - would come from Supabase in real app
-  const [partyData, setPartyData] = useState({
-    name: "", // Will be set from localStorage
-    partySize: 4,
-    position: 3,
-    totalInQueue: 8,
-    estimatedWait: 25,
-    toleranceMinutes: 2, // Changed from 10 to 2 minutes
-    status: "waiting", // waiting, next, ready, seated
-    restaurantName: "O Cantinho Aconchegante"
-  });
 
-  // Load party data from localStorage (simulating real data)
+  /* ───────────────────────── fetch inicial + polling ───────────────────────── */
   useEffect(() => {
-    const savedPartyData = localStorage.getItem('partyData');
-    if (savedPartyData) {
-      const parsed = JSON.parse(savedPartyData);
-      setPartyData(prev => ({
-        ...prev,
-        name: parsed.name || "Usuário",
-        partySize: parsed.partySize || 4
-      }));
-    } else {
-      // Fallback if no data saved
-      setPartyData(prev => ({
-        ...prev,
-        name: "Usuário"
-      }));
-    }
-  }, []);
+    if (!partyId) return;
 
-  // Initialize tolerance time when position becomes 0
-  useEffect(() => {
-    if (partyData.position === 0) {
-      setToleranceTimeLeft(partyData.toleranceMinutes * 60);
-    }
-  }, [partyData.position, partyData.toleranceMinutes]);
+    const fetchParty = async () => {
+      const { data, error } = await supabase
+        .from("parties")
+        .select(
+          "id, name, phone, party_size, queue_position, status, tolerance_minutes, restaurant_id"
+        )
+        .eq("id", partyId)
+        .single();
 
-  // Updated tolerance countdown to show NoShow screen when time runs out
-  useEffect(() => {
-    if (partyData.position === 0 && toleranceTimeLeft > 0) {
-      const interval = setInterval(() => {
-        setToleranceTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            // Show NoShow screen when time runs out
-            setShowTurnModal(false);
-            setShowNoShow(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      if (!error && data) setParty(data as Party);
+    };
 
-      return () => clearInterval(interval);
-    }
-  }, [partyData.position, toleranceTimeLeft]);
-
-  // 👋 Real-time updates simulation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPartyData(prev => {
-        // Simulate queue movement
-        const newPosition = Math.max(0, prev.position - Math.random() * 0.5);
-        const newEstimatedWait = Math.max(0, prev.estimatedWait - 2);
-        
-        const updatedData = {
-          ...prev,
-          position: Math.floor(newPosition),
-          estimatedWait: Math.floor(newEstimatedWait)
-        };
-
-        // Show turn modal when position becomes 0
-        if (updatedData.position === 0 && prev.position > 0) {
-          setShowTurnModal(true);
-        }
-
-        return updatedData;
-      });
-    }, 10000); // Update every 10 seconds
-
+    fetchParty();
+    const interval = setInterval(fetchParty, 8000); // atualizar a cada 8 s
     return () => clearInterval(interval);
-  }, []);
+  }, [partyId]);
 
-  const progressPercentage = ((partyData.totalInQueue - partyData.position) / partyData.totalInQueue) * 100;
+  /* ───────────────────────── iniciar contagem tolerância ───────────────────────── */
+  useEffect(() => {
+    if (party?.status === "ready" && party.tolerance_minutes) {
+      setToleranceTimeLeft(party.tolerance_minutes * 60);
+    }
+  }, [party?.status, party?.tolerance_minutes]);
 
-  const handleLeaveQueue = () => {
-    setShowLeaveConfirmation(true);
-  };
+  /* countdown de tolerância até No-show */
+  useEffect(() => {
+    if (toleranceTimeLeft <= 0 || party?.status !== "ready") return;
 
+    const intv = setInterval(() => {
+      setToleranceTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(intv);
+          setShowTurnModal(false);
+          setShowNoShow(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(intv);
+  }, [toleranceTimeLeft, party?.status]);
+
+  /* mostrar modal quando status vira ready */
+  useEffect(() => {
+    if (party?.status === "ready") setShowTurnModal(true);
+  }, [party?.status]);
+
+  /* ───────────────────────── derived values ───────────────────────── */
+  const progressPercentage = party
+    ? Math.min(
+        100,
+        Math.max(
+          0,
+          ((party.queue_position ?? 0) === 0
+            ? 100
+            : 100 - (party.queue_position ?? 0) * 10)
+        )
+      )
+    : 0;
+
+  /* ───────────────────────── event handlers ───────────────────────── */
+  const handleLeaveQueue = () => setShowLeaveConfirmation(true);
   const handleCancelLeave = () => {
     setShowLeaveConfirmation(false);
-    // If we were leaving from the turn modal, go back to it
     if (isLeavingFromTurnModal) {
       setIsLeavingFromTurnModal(false);
       setShowTurnModal(true);
     }
   };
-
   const handleConfirmLeave = () => {
     setShowLeaveConfirmation(false);
     setIsLeavingFromTurnModal(false);
     setShowTurnModal(false);
     setShowThankYou(true);
-    toast({
-      title: "Removido da lista",
-      description: "Você foi removido da fila",
-    });
+    toast({ title: "Removido da lista", description: "Você foi removido da fila" });
   };
-
   const handleJoinAgain = () => {
     setShowThankYou(false);
-    navigate("/check-in");
+    navigate("/check-in"); // fluxo de novo check-in
   };
-
   const handleViewMenu = () => {
     window.open("https://example.com/menu", "_blank");
   };
-
   const handleConfirmTurn = () => {
     setShowTurnModal(false);
-    toast({
-      title: "Confirmado!",
-      description: "Dirija-se à recepção do restaurante",
-    });
+    toast({ title: "Confirmado!", description: "Dirija-se à recepção do restaurante" });
   };
-
   const handleCancelTurn = () => {
     setShowTurnModal(false);
     setIsLeavingFromTurnModal(true);
     handleLeaveQueue();
   };
-
   const handleRejoinQueue = () => {
     setShowNoShow(false);
-    // Update position to next available (simulate being moved to position 2)
-    setPartyData(prev => ({
-      ...prev,
-      position: prev.position + 1,
-      estimatedWait: 15 // Reset estimated wait time
-    }));
-    // Reset tolerance time
-    setToleranceTimeLeft(0);
-    toast({
-      title: "Reinserido na fila",
-      description: `Você foi colocado na posição #${partyData.position + 1}`,
-    });
+    toast({ title: "Solicite para ser reinserido pela recepção." });
   };
+
+  /* ───────────────────────── render ───────────────────────── */
+  if (!party) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">Carregando…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">
@@ -185,30 +166,32 @@ const Status = () => {
           <span>Início</span>
         </Button>
         <h1 className="text-lg font-semibold text-black">Status da Fila</h1>
-        <div className="w-16"></div>
+        <div className="w-16" />
       </div>
 
-      {/* Status Content */}
+      {/* Content */}
       <div className="px-6 pb-6">
         <div className="max-w-md mx-auto space-y-8">
-          
           {/* Party Info */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-black">Olá {partyData.name}! 👋</h2>
-              <p className="text-gray-600">Grupo de {partyData.partySize} pessoas</p>
-            </div>
+          <div className="bg-white rounded-2xl p-6 shadow-lg text-center space-y-2">
+            <h2 className="text-2xl font-bold text-black">
+              Olá {party.name}! 👋
+            </h2>
+            <p className="text-gray-600">
+              Grupo de {party.party_size}{" "}
+              {party.party_size === 1 ? "pessoa" : "pessoas"}
+            </p>
           </div>
 
-          {/* Position & Progress */}
+          {/* Position & progress */}
           <div className="bg-white rounded-2xl p-6 shadow-lg space-y-6">
             <div className="text-center">
               <div className="text-4xl font-bold text-black mb-2">
-                #{partyData.position}
+                #{party.queue_position ?? "—"}
               </div>
               <p className="text-gray-600">Sua posição na fila</p>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Progresso</span>
@@ -216,29 +199,32 @@ const Status = () => {
               </div>
               <Progress value={progressPercentage} className="h-3" />
             </div>
-            
-            {/* Status Messages inside the card */}
-            {partyData.position === 0 && (
-              <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-6 text-center">
-                <div className="text-3xl mb-2">🎉</div>
-                <h3 className="text-xl font-bold text-black mb-2">Sua mesa está pronta!</h3>
+
+            {/* status específico */}
+            {party.status === "ready" && (
+              <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-6 text-center space-y-1">
+                <h3 className="text-xl font-bold text-black">
+                  Sua mesa está pronta!
+                </h3>
                 <p className="text-gray-700">Dirija-se à recepção</p>
-                <p className="text-sm text-gray-600 mt-2">
-                  Você tem {Math.floor(toleranceTimeLeft / 60)} minutos para chegar
+                <p className="text-sm text-gray-600">
+                  Você tem {Math.floor(toleranceTimeLeft / 60)} minutos para
+                  chegar
                 </p>
               </div>
             )}
-            
-            {partyData.position === 1 && (
+
+            {party.status === "next" && (
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-6 text-center">
-                <div className="text-3xl mb-2">⏰</div>
-                <h3 className="text-xl font-bold text-black mb-2">Você é o próximo!</h3>
+                <h3 className="text-xl font-bold text-black mb-1">
+                  Você é o próximo!
+                </h3>
                 <p className="text-gray-700">Sua mesa ficará pronta em breve</p>
               </div>
             )}
-            
-            {/* Show different content based on position */}
-            {partyData.position === 0 ? (
+
+            {/* cronômetro/estimativa */}
+            {party.status === "ready" ? (
               <TimeDisplay
                 timeInSeconds={toleranceTimeLeft}
                 label="Tempo para chegar ao restaurante"
@@ -246,24 +232,23 @@ const Status = () => {
               />
             ) : (
               <TimeDisplay
-                initialMinutes={partyData.estimatedWait}
+                initialMinutes={25}
                 label="Tempo estimado de espera"
-                isCountdown={true}
+                isCountdown
                 className="text-center"
               />
             )}
           </div>
 
-          {/* Action Buttons */}
+          {/* Botões */}
           <div className="space-y-3">
-            <Button 
+            <Button
               onClick={handleViewMenu}
               className="w-full h-12 bg-black text-white hover:bg-gray-800"
             >
               🍽️ Ver Cardápio
             </Button>
-            
-            <Button 
+            <Button
               onClick={handleLeaveQueue}
               variant="outline"
               className="w-full h-12 border-red-200 text-red-600 hover:bg-red-50"
@@ -272,46 +257,43 @@ const Status = () => {
             </Button>
           </div>
 
-          {/* Live Updates Info */}
+          {/* Live info */}
           <div className="text-center">
             <div className="inline-flex items-center space-x-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-full">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               <span>Atualizações ao vivo ativas</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Turn Modal */}
+      {/* Modais */}
       <TurnModal
         isOpen={showTurnModal}
         onConfirm={handleConfirmTurn}
         onCancel={handleCancelTurn}
         toleranceTimeLeft={toleranceTimeLeft}
-        restaurantName={partyData.restaurantName}
+        restaurantName="Restaurante"
       />
 
-      {/* Leave Queue Confirmation */}
       <LeaveQueueConfirmation
         isOpen={showLeaveConfirmation}
         onCancel={handleCancelLeave}
         onConfirm={handleConfirmLeave}
-        restaurantName={partyData.restaurantName}
+        restaurantName="Restaurante"
       />
 
-      {/* Thank You Screen */}
       <ThankYouScreen
         isOpen={showThankYou}
         onJoinAgain={handleJoinAgain}
-        restaurantName={partyData.restaurantName}
+        restaurantName="Restaurante"
       />
 
-      {/* No Show Screen */}
       <NoShowScreen
         isOpen={showNoShow}
         onRejoinQueue={handleRejoinQueue}
-        restaurantName={partyData.restaurantName}
-        newPosition={partyData.position + 1}
+        restaurantName="Restaurante"
+        newPosition={(party.queue_position ?? 0) + 1}
       />
     </div>
   );
