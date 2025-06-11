@@ -1,9 +1,23 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import QRScanner from "@/components/QRScanner";
+
 const Index = () => {
   const navigate = useNavigate();
-  return <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex flex-col">
+  const [showScanner, setShowScanner] = useState(false);
+
+  const handleScanQRCode = () => {
+    setShowScanner(true);
+  };
+
+  const handleCloseScanner = () => {
+    setShowScanner(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex flex-col">
       {/* Header */}
       <div className="text-center pt-12 pb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Line-up</h1>
@@ -38,7 +52,12 @@ const Index = () => {
 
           {/* CTA Buttons */}
           <div className="space-y-3">
-            <Button onClick={() => navigate("/check-in")} className="w-full h-14 text-lg font-semibold bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">Escanear QR Code</Button>
+            <Button 
+              onClick={handleScanQRCode} 
+              className="w-full h-14 text-lg font-semibold bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+            >
+              Escanear QR Code
+            </Button>
 
             <Button onClick={() => navigate("/restaurants")} variant="outline" className="w-full h-14 text-lg font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200">
               Ver Filas dos Restaurantes
@@ -56,6 +75,13 @@ const Index = () => {
           </div>
         </div>
       </div>
-    </div>;
+
+      {/* QR Scanner Modal */}
+      {showScanner && (
+        <QRScanner onClose={handleCloseScanner} />
+      )}
+    </div>
+  );
 };
+
 export default Index;
