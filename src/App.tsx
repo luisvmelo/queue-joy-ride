@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import CheckIn from "./pages/CheckIn";
 import Status from "./pages/Status";
 import Restaurants from "./pages/Restaurants";
+import EstabelecimentoDetalhes from "./pages/EstabelecimentoDetalhes";
 import ReceptionistDashboard from "./pages/ReceptionistDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
@@ -23,8 +24,10 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/check-in" element={<CheckIn />} />
+          <Route path="/check-in/:restaurantId" element={<CheckIn />} />
           <Route path="/status/:id" element={<Status />} />
           <Route path="/restaurants" element={<Restaurants />} />
+          <Route path="/estabelecimento/:restaurantId" element={<EstabelecimentoDetalhes />} />
           <Route path="/receptionist" element={<ReceptionistDashboard />} />
           <Route path="/admin" element={<AdminDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

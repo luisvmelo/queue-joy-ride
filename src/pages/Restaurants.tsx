@@ -4,108 +4,95 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Users, Clock, Search, Menu, Calendar } from "lucide-react";
-interface RestaurantQueue {
+import { supabase } from "@/integrations/supabase/client";
+
+interface Restaurant {
   id: string;
   name: string;
-  address: string;
+  menu_url: string | null;
+  tolerance_minutes: number | null;
+  avg_seat_time_minutes: number | null;
+}
+
+interface RestaurantWithQueue extends Restaurant {
   currentQueue: number;
   estimatedWait: number;
   status: "open" | "closed" | "full";
   emoji: string;
   type: "bar" | "restaurant";
   events: string[];
+  address: string;
 }
+
 const Restaurants = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<"all" | "bar" | "restaurant">("all");
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+  const [restaurants, setRestaurants] = useState<RestaurantWithQueue[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - seria vindo do Supabase em uma aplicação real
-  const [restaurants, setRestaurants] = useState<RestaurantQueue[]>([{
-    id: "1",
-    name: "O Cantinho Aconchegante",
-    address: "Rua das Flores, 123",
-    currentQueue: 8,
-    estimatedWait: 25,
-    status: "open",
-    emoji: "🍽️",
-    type: "restaurant",
-    events: ["Happy Hour", "Música ao Vivo"]
-  }, {
-    id: "2",
-    name: "Pizzaria do Bairro",
-    address: "Avenida Central, 456",
-    currentQueue: 12,
-    estimatedWait: 35,
-    status: "open",
-    emoji: "🍕",
-    type: "restaurant",
-    events: ["Karaokê"]
-  }, {
-    id: "3",
-    name: "Burger Palace",
-    address: "Rua do Comércio, 789",
-    currentQueue: 15,
-    estimatedWait: 40,
-    status: "full",
-    emoji: "🍔",
-    type: "restaurant",
-    events: ["Jogo de Futebol"]
-  }, {
-    id: "4",
-    name: "Sushi Express",
-    address: "Praça da Liberdade, 321",
-    currentQueue: 0,
-    estimatedWait: 0,
-    status: "closed",
-    emoji: "🍣",
-    type: "restaurant",
-    events: []
-  }, {
-    id: "5",
-    name: "Bar da Esquina",
-    address: "Rua do Café, 654",
-    currentQueue: 5,
-    estimatedWait: 15,
-    status: "open",
-    emoji: "🍺",
-    type: "bar",
-    events: ["Happy Hour", "Clone de Chopp"]
-  }, {
-    id: "6",
-    name: "Boteco do João",
-    address: "Rua dos Bares, 987",
-    currentQueue: 3,
-    estimatedWait: 10,
-    status: "open",
-    emoji: "🍻",
-    type: "bar",
-    events: ["Clone de Drink", "Música ao Vivo"]
-  }]);
   const availableEvents = ["Clone de Chopp", "Clone de Drink", "Happy Hour", "Karaokê", "Música ao Vivo", "Jogo de Futebol"];
 
-  // Simulação de atualizações em tempo real
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRestaurants(prev => prev.map(restaurant => {
-        if (restaurant.status === "open") {
-          const queueChange = Math.floor(Math.random() * 3) - 1; // -1, 0, ou 1
-          const newQueue = Math.max(0, restaurant.currentQueue + queueChange);
-          const newWait = Math.max(0, newQueue * 3 + Math.floor(Math.random() * 10));
-          return {
-            ...restaurant,
-            currentQueue: newQueue,
-            estimatedWait: newWait,
-            status: newQueue >= 20 ? "full" : "open"
-          };
-        }
-        return restaurant;
-      }));
-    }, 5000); // Atualiza a cada 5 segundos
+  // Mock data para complementar os dados do banco
+  const mockRestaurantData: Record<string, { emoji: string; type: "bar" | "restaurant"; events: string[], address: string }> = {
+    'O Cantinho Aconchegante': { emoji: "🍽️", type: "restaurant", events: ["Happy Hour", "Música ao Vivo"], address: "Rua das Flores, 123" },
+    'Pizzaria do Bairro': { emoji: "🍕", type: "restaurant", events: ["Karaokê"], address: "Avenida Central, 456" },
+    'Burger Palace': { emoji: "🍔", type: "restaurant", events: ["Jogo de Futebol"], address: "Rua do Comércio, 789" },
+    'Sushi Express': { emoji: "🍣", type: "restaurant", events: [], address: "Praça da Liberdade, 321" },
+    'Bar da Esquina': { emoji: "🍺", type: "bar", events: ["Happy Hour", "Clone de Chopp"], address: "Rua do Café, 654" },
+    'Boteco do João': { emoji: "🍻", type: "bar", events: ["Clone de Drink", "Música ao Vivo"], address: "Rua dos Bares, 987" }
+  };
 
+  useEffect(() => {
+    fetchRestaurants();
+    const interval = setInterval(fetchRestaurants, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const fetchRestaurants = async () => {
+    try {
+      const { data: restaurantsData, error } = await supabase
+        .from('restaurants')
+        .select('*');
+
+      if (error) throw error;
+
+      const restaurantsWithQueue = await Promise.all(
+        restaurantsData.map(async (restaurant) => {
+          // Buscar dados da fila para cada restaurante
+          const { data: queueData } = await supabase
+            .from('parties')
+            .select('*')
+            .eq('restaurant_id', restaurant.id)
+            .eq('status', 'waiting');
+
+          const queueCount = queueData?.length || 0;
+          const estimatedWait = queueCount * 3 + Math.floor(Math.random() * 10);
+          const mockData = mockRestaurantData[restaurant.name] || { 
+            emoji: "🍽️", 
+            type: "restaurant" as const, 
+            events: [], 
+            address: "Endereço não informado" 
+          };
+
+          return {
+            ...restaurant,
+            currentQueue: queueCount,
+            estimatedWait: Math.max(0, estimatedWait),
+            status: queueCount >= 20 ? "full" as const : "open" as const,
+            ...mockData
+          };
+        })
+      );
+
+      setRestaurants(restaurantsWithQueue);
+    } catch (error) {
+      console.error('Erro ao buscar restaurantes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filtrar restaurantes baseado na busca, tipo e eventos
   const filteredRestaurants = restaurants.filter(restaurant => {
@@ -144,7 +131,8 @@ const Restaurants = () => {
   const getTypeText = (type: string) => {
     return type === "bar" ? "Bar" : "Restaurante";
   };
-  return <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">
       {/* Header */}
       <div className="flex items-center justify-between p-4">
         <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
@@ -203,9 +191,17 @@ const Restaurants = () => {
           </div>
 
           {/* Restaurant Cards */}
-          {filteredRestaurants.length === 0 ? <div className="text-center py-8">
+          {filteredRestaurants.length === 0 ? (
+            <div className="text-center py-8">
               <p className="text-gray-500">Nenhum estabelecimento encontrado</p>
-            </div> : filteredRestaurants.map(restaurant => <Card key={restaurant.id} className="shadow-lg hover:shadow-xl transition-shadow">
+            </div>
+          ) : (
+            filteredRestaurants.map(restaurant => (
+              <Card 
+                key={restaurant.id} 
+                className="shadow-lg hover:shadow-xl transition-all cursor-pointer"
+                onClick={() => navigate(`/estabelecimento/${restaurant.id}`)}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -237,42 +233,68 @@ const Restaurants = () => {
                         </span>
                       </div>
                       
-                      {restaurant.status === "open" && <div className="flex items-center space-x-2 text-gray-700">
+                      {restaurant.status === "open" && (
+                        <div className="flex items-center space-x-2 text-gray-700">
                           <Clock className="w-4 h-4" />
                           <span className="text-sm">~{restaurant.estimatedWait} min</span>
-                        </div>}
+                        </div>
+                      )}
                     </div>
-                    
-                    {restaurant.status === "open"}
                   </div>
 
                   {/* Action Buttons */}
                   <div className="flex flex-col space-y-2">
-                    <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/menu")}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (restaurant.menu_url) {
+                          window.open(restaurant.menu_url, '_blank');
+                        }
+                      }}
+                    >
                       <Menu className="w-4 h-4 mr-2" />
                       Ver Menu
                     </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/reserva")}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate("/reserva");
+                      }}
+                    >
                       <Calendar className="w-4 h-4 mr-2" />
                       Fazer Reserva
                     </Button>
                   </div>
 
                   {/* Events */}
-                  {restaurant.events.length > 0 && <div className="border-t pt-3">
+                  {restaurant.events.length > 0 && (
+                    <div className="border-t pt-3">
                       <div className="flex items-center space-x-2">
                         <span className="text-xs text-gray-500 font-medium">Eventos hoje:</span>
                         <div className="flex flex-wrap gap-1">
-                          {restaurant.events.map((event, index) => <span key={event} className="text-xs text-blue-600">
+                          {restaurant.events.map((event, index) => (
+                            <span key={event} className="text-xs text-blue-600">
                               {event}{index < restaurant.events.length - 1 ? ' / ' : ''}
-                            </span>)}
+                            </span>
+                          ))}
                         </div>
                       </div>
-                    </div>}
+                    </div>
+                  )}
                 </CardContent>
-              </Card>)}
+              </Card>
+            ))
+          )}
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default Restaurants;
