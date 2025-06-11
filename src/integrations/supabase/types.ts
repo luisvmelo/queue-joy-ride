@@ -17,7 +17,7 @@ export type Database = {
           id: string
           joined_at: string | null
           name: string
-          notification_type: string
+          notification_type: string | null
           notified_next_at: string | null
           notified_ready_at: string | null
           party_size: number
@@ -36,7 +36,7 @@ export type Database = {
           id?: string
           joined_at?: string | null
           name: string
-          notification_type: string
+          notification_type?: string | null
           notified_next_at?: string | null
           notified_ready_at?: string | null
           party_size: number
@@ -55,7 +55,7 @@ export type Database = {
           id?: string
           joined_at?: string | null
           name?: string
-          notification_type?: string
+          notification_type?: string | null
           notified_next_at?: string | null
           notified_ready_at?: string | null
           party_size?: number
