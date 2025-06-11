@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -48,13 +49,36 @@ const Status = () => {
     const fetchParty = async () => {
       const { data, error } = await supabase
         .from("parties")
-        .select(
-          "id, name, phone, party_size, queue_position, status, tolerance_minutes, restaurant_id"
-        )
+        .select(`
+          id, 
+          name, 
+          phone, 
+          party_size, 
+          queue_position, 
+          status, 
+          restaurant_id,
+          restaurants!inner(
+            tolerance_minutes,
+            name
+          )
+        `)
         .eq("id", partyId)
         .single();
 
-      if (!error && data) setParty(data as Party);
+      if (!error && data) {
+        const partyData: Party = {
+          id: data.id,
+          name: data.name,
+          phone: data.phone,
+          party_size: data.party_size,
+          queue_position: data.queue_position,
+          status: data.status,
+          restaurant_id: data.restaurant_id,
+          tolerance_minutes: data.restaurants?.tolerance_minutes || null,
+          restaurant_name: data.restaurants?.name || undefined
+        };
+        setParty(partyData);
+      }
     };
 
     fetchParty();
@@ -273,26 +297,26 @@ const Status = () => {
         onConfirm={handleConfirmTurn}
         onCancel={handleCancelTurn}
         toleranceTimeLeft={toleranceTimeLeft}
-        restaurantName="Restaurante"
+        restaurantName={party.restaurant_name || "Restaurante"}
       />
 
       <LeaveQueueConfirmation
         isOpen={showLeaveConfirmation}
         onCancel={handleCancelLeave}
         onConfirm={handleConfirmLeave}
-        restaurantName="Restaurante"
+        restaurantName={party.restaurant_name || "Restaurante"}
       />
 
       <ThankYouScreen
         isOpen={showThankYou}
         onJoinAgain={handleJoinAgain}
-        restaurantName="Restaurante"
+        restaurantName={party.restaurant_name || "Restaurante"}
       />
 
       <NoShowScreen
         isOpen={showNoShow}
         onRejoinQueue={handleRejoinQueue}
-        restaurantName="Restaurante"
+        restaurantName={party.restaurant_name || "Restaurante"}
         newPosition={(party.queue_position ?? 0) + 1}
       />
     </div>
