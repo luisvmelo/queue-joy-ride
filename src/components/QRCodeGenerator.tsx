@@ -1,36 +1,58 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { QrCode, Download, Share2 } from "lucide-react";
+import { Download, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import QRCode from "react-qr-code";
 
 const QRCodeGenerator = () => {
   const { toast } = useToast();
   const checkInUrl = `${window.location.origin}/check-in`;
 
+  /* ------------------------------------------------------------
+   * Download (PNG) — simples: abre a dataURL gerada pelo SVG
+   * ---------------------------------------------------------- */
   const handleDownloadQR = () => {
+    const svg = document.getElementById("checkin-qr");
+    if (!svg) return;
+
+    // cria um canvas temporário para converter em PNG
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "qrcode-checkin.svg";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
     toast({
-      title: "QR Code baixado",
-      description: "O QR Code foi salvo em seus downloads",
+      title: "QR Code baixado!",
+      description: "Arquivo SVG salvo nos seus downloads.",
     });
   };
 
+  /* ------------------------------------------------------------
+   * Compartilhar / copiar link
+   * ---------------------------------------------------------- */
   const handleShareQR = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Entre na Lista de Espera',
-          text: 'Escaneie este QR Code para entrar na lista de espera do restaurante',
+          title: "Entre na Lista de Espera",
+          text: "Escaneie este QR Code para entrar na lista de espera do restaurante",
           url: checkInUrl,
         });
       } catch (error) {
-        console.log('Error sharing:', error);
+        console.log("Share cancelled:", error);
       }
     } else {
-      navigator.clipboard.writeText(checkInUrl);
+      await navigator.clipboard.writeText(checkInUrl);
       toast({
-        title: "Link copiado",
-        description: "O link foi copiado para a área de transferência",
+        title: "Link copiado!",
+        description: "URL copiada para a área de transferência.",
       });
     }
   };
@@ -41,28 +63,29 @@ const QRCodeGenerator = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <QrCode className="w-5 h-5" />
-            <span>QR Code Atual</span>
+            <span className="text-lg">QR Code Atual</span>
           </CardTitle>
         </CardHeader>
+
         <CardContent className="text-center">
+          {/* QR real */}
           <div className="bg-white p-8 rounded-lg border-2 border-dashed border-gray-300 mb-4">
-            {/* QR Code placeholder - in real app, use a QR code library */}
-            <div className="w-64 h-64 mx-auto bg-gray-900 rounded-lg flex items-center justify-center">
-              <div className="text-white text-center">
-                <QrCode className="w-16 h-16 mx-auto mb-2" />
-                <p className="text-sm">QR Code</p>
-                <p className="text-xs opacity-75">para Check-in</p>
-              </div>
-            </div>
+            <QRCode
+              id="checkin-qr"
+              value={checkInUrl}
+              size={256}
+              bgColor="#ffffff"
+              fgColor="#000000"
+              style={{ margin: "0 auto", width: "16rem", height: "16rem" }}
+            />
           </div>
-          
+
           <div className="space-y-3">
             <Button onClick={handleDownloadQR} className="w-full">
               <Download className="w-4 h-4 mr-2" />
               Baixar QR Code
             </Button>
-            
+
             <Button onClick={handleShareQR} variant="outline" className="w-full">
               <Share2 className="w-4 h-4 mr-2" />
               Compartilhar
@@ -76,41 +99,17 @@ const QRCodeGenerator = () => {
         <CardHeader>
           <CardTitle>QR Code da Administração</CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-4">
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-600 font-semibold text-sm">📋</span>
-            </div>
-            <div>
-              <h3 className="font-medium">QR Code Centralizado</h3>
-              <p className="text-gray-600 text-sm">Este QR Code é gerado e controlado pela administração</p>
-            </div>
-          </div>
+          <p className="text-sm text-gray-600">
+            Gere, imprima e posicione este QR Code na entrada do restaurante.
+            A tela da recepção é sincronizada automaticamente.
+          </p>
 
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-600 font-semibold text-sm">🔄</span>
-            </div>
-            <div>
-              <h3 className="font-medium">Atualização Automática</h3>
-              <p className="text-gray-600 text-sm">Sempre que a administração gera um novo QR Code, este é atualizado automaticamente</p>
-            </div>
-          </div>
-
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-600 font-semibold text-sm">📱</span>
-            </div>
-            <div>
-              <h3 className="font-medium">Uso na recepção</h3>
-              <p className="text-gray-600 text-sm">Use este QR Code para auxiliar clientes que não conseguiram escanear o QR Code impresso</p>
-            </div>
-          </div>
-
-          <div className="border-t pt-4 mt-6">
+          <div className="border-t pt-4">
             <h4 className="font-medium mb-2">Link direto:</h4>
-            <div className="bg-gray-50 p-3 rounded border">
-              <code className="text-sm text-gray-700 break-all">{checkInUrl}</code>
+            <div className="bg-gray-50 p-3 rounded border break-all text-sm">
+              {checkInUrl}
             </div>
           </div>
         </CardContent>
