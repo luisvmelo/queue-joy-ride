@@ -1,45 +1,53 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+/** caso o QR não traga restaurantId na rota */
 const DEFAULT_RESTAURANT_ID = "550e8400-e29b-41d4-a716-446655440000";
 
 const CheckIn = () => {
+  /* -------------------------------------- hooks */
   const navigate = useNavigate();
+  const { restaurantId } = useParams<{ restaurantId?: string }>();
   const { toast } = useToast();
-  const { restaurantId } = useParams<{ restaurantId: string }>(); // opcional
-  const [loading, setLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
+  /* -------------------------------------- state */
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
     name: "",
     phone: "",
     partySize: "",
     notificationType: "sms",
   });
 
-  /* -------------------------------------------------- */
-  /* helpers                                            */
-  /* -------------------------------------------------- */
-  const validate = () => {
-    if (!formData.name || !formData.phone || !formData.partySize) {
+  /* -------------------------------------- helpers */
+  const setField =
+    (key: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm({ ...form, [key]: e.target.value });
+
+  const valid = () => {
+    if (!form.name || !form.phone || !form.partySize) {
       toast({
-        title: "Informações incompletas",
-        description: "Por favor, preencha todos os campos obrigatórios.",
+        title: "Campos obrigatórios",
+        description: "Preencha nome, telefone e tamanho do grupo.",
         variant: "destructive",
       });
       return false;
     }
-    const n = parseInt(formData.partySize);
-    if (isNaN(n) || n < 1) {
+    const n = Number(form.partySize);
+    if (!Number.isInteger(n) || n < 1) {
       toast({
-        title: "Tamanho do grupo inválido",
-        description: "Insira um número válido de pessoas.",
+        title: "Tamanho inválido",
+        description: "Informe um número de pessoas maior que zero.",
         variant: "destructive",
       });
       return false;
@@ -47,27 +55,23 @@ const CheckIn = () => {
     return true;
   };
 
-  /* -------------------------------------------------- */
-  /* submit                                             */
-  /* -------------------------------------------------- */
-  const handleSubmit = async (e: React.FormEvent) => {
+  /* -------------------------------------- submit */
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!valid()) return;
 
-    const partySizeNum = parseInt(formData.partySize);
     setLoading(true);
-
     try {
       const { data, error } = await supabase
         .from("parties")
         .insert([
           {
             restaurant_id: restaurantId ?? DEFAULT_RESTAURANT_ID,
-            name: formData.name,
-            phone: formData.phone,
-            party_size: partySizeNum,
-            notification_type: formData.notificationType,
-            status: "waiting",
+            name: form.name,
+            phone: form.phone,
+            party_size: Number(form.partySize),
+            notification_type: form.notificationType,
+            status: "waiting", // triggers calculam posições
           },
         ])
         .select()
@@ -76,17 +80,16 @@ const CheckIn = () => {
       if (error) throw error;
 
       toast({
-        title: "Bem-vindo à lista de espera!",
-        description: "Você receberá atualizações no seu telefone.",
+        title: "Sucesso! 🙌",
+        description: "Você entrou na fila e receberá atualizações por mensagem.",
       });
 
-      /* -> status page com ID real */
       navigate(`/status/${data.id}`);
     } catch (err) {
       console.error(err);
       toast({
-        title: "Algo deu errado",
-        description: "Por favor, tente novamente.",
+        title: "Erro ao entrar na fila",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -94,13 +97,11 @@ const CheckIn = () => {
     }
   };
 
-  /* -------------------------------------------------- */
-  /* UI                                                 */
-  /* -------------------------------------------------- */
+  /* -------------------------------------- UI */
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">
-      {/* header */}
-      <div className="flex items-center justify-between p-4">
+      {/* cabeçalho */}
+      <header className="flex items-center justify-between p-4">
         <Button
           variant="ghost"
           size="sm"
@@ -108,25 +109,25 @@ const CheckIn = () => {
           className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Voltar</span>
+          <span>Início</span>
         </Button>
-        <h1 className="text-lg font-semibold text-gray-900">Entrar na Lista</h1>
+        <h1 className="text-lg font-semibold text-gray-900">
+          Entrar na Lista
+        </h1>
         <div className="w-16" />
-      </div>
+      </header>
 
-      {/* form */}
-      <div className="px-6 pb-6">
+      {/* formulário */}
+      <main className="px-6 pb-6">
         <div className="max-w-md mx-auto">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={onSubmit} className="space-y-6">
             {/* nome */}
             <div className="space-y-2">
               <Label htmlFor="name">Nome *</Label>
               <Input
                 id="name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                value={form.name}
+                onChange={setField("name")}
                 placeholder="Digite seu nome"
                 className="h-12"
               />
@@ -134,15 +135,13 @@ const CheckIn = () => {
 
             {/* telefone */}
             <div className="space-y-2">
-              <Label htmlFor="phone">Número de Telefone *</Label>
+              <Label htmlFor="phone">Telefone *</Label>
               <Input
                 id="phone"
                 type="tel"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                placeholder="(11) 99999-9999"
+                value={form.phone}
+                onChange={setField("phone")}
+                placeholder="(11) 91234-5678"
                 className="h-12"
               />
             </div>
@@ -154,34 +153,30 @@ const CheckIn = () => {
                 id="partySize"
                 type="number"
                 min="1"
-                value={formData.partySize}
-                onChange={(e) =>
-                  setFormData({ ...formData, partySize: e.target.value })
-                }
-                placeholder="Quantas pessoas?"
+                value={form.partySize}
+                onChange={setField("partySize")}
+                placeholder="Ex.: 4"
                 className="h-12"
               />
             </div>
 
             {/* preferência de notificação */}
             <div className="space-y-3">
-              <Label>Como gostaria de ser notificado?</Label>
+              <Label>Como prefere ser notificado?</Label>
               <RadioGroup
-                value={formData.notificationType}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, notificationType: value })
-                }
+                value={form.notificationType}
+                onValueChange={(v) => setForm({ ...form, notificationType: v })}
                 className="space-y-3"
               >
-                {[
-                  ["sms", "📱 Mensagem de texto (SMS)"],
-                  ["whatsapp", "💬 Mensagem no WhatsApp"],
-                  ["call", "📞 Ligação telefônica"],
-                  ["push", "🔔 Notificação no app"],
+                {([
+                  ["sms", "📱 SMS"],
+                  ["whatsapp", "💬 WhatsApp"],
+                  ["call", "📞 Ligação"],
+                  ["push", "🔔 Notificação"],
                   ["email", "📧 E-mail"],
-                ].map(([value, label]) => (
+                ] as const).map(([value, label]) => (
                   <div key={value} className="flex items-center space-x-2">
-                    <RadioGroupItem value={value} id={value} />
+                    <RadioGroupItem id={value} value={value} />
                     <Label htmlFor={value} className="cursor-pointer">
                       {label}
                     </Label>
@@ -192,28 +187,15 @@ const CheckIn = () => {
 
             {/* botão */}
             <Button
-              className="w-full h-14 text-lg font-semibold bg-black text-white hover:bg-gray-800 disabled:opacity-50"
               disabled={loading}
               type="submit"
+              className="w-full h-14 bg-black text-white text-lg font-semibold hover:bg-gray-800 disabled:opacity-50"
             >
-              {loading ? "Entrando..." : "Entrar na Lista de Espera"}
+              {loading ? "Enviando…" : "Entrar na Lista de Espera"}
             </Button>
-
-            {/* info */}
-            <div className="text-center space-y-2">
-              <p className="text-sm text-gray-600">
-                Tempo de espera estimado:{" "}
-                <span className="font-semibold text-orange-600">
-                  25-30 minutos
-                </span>
-              </p>
-              <p className="text-xs text-gray-500">
-                Você pode sair e voltar — guardaremos seu lugar!
-              </p>
-            </div>
           </form>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
