@@ -1,106 +1,160 @@
-// src/pages/Status.tsx  (substitua tudo)
-
+// src/pages/Status.tsx
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
+import { useNavigate, useParams } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-type PartyRow = {
+import TurnModal from "@/components/TurnModal";
+import LeaveQueueConfirmation from "@/components/LeaveQueueConfirmation";
+import ThankYouScreen from "@/components/ThankYouScreen";
+import NoShowScreen from "@/components/NoShowScreen";
+import TimeDisplay from "@/components/TimeDisplay";
+
+import { supabase } from "@/integrations/supabase/client";
+
+/* -------------------------------------------------------------------------- */
+/*  Types                                                                     */
+/* -------------------------------------------------------------------------- */
+
+interface Party {
   id: string;
   name: string;
+  phone: string;
   party_size: number;
-  queue_position: number;
-  estimated_wait_minutes: number;
-  status: "waiting" | "next" | "ready" | "seated";
-  restaurant_id: string;
+  queue_position: number | null;
+  estimated_wait_minutes: number | null;
+  tolerance_minutes: number | null;
   restaurant: {
+    id: string;
     name: string;
     menu_url: string | null;
-    tolerance_minutes: number | null;
   } | null;
-};
+}
 
-export default function Status() {
+/* -------------------------------------------------------------------------- */
+/*  Componente                                                                */
+/* -------------------------------------------------------------------------- */
+
+const Status = () => {
+  /* ---------------------------------- misc --------------------------------- */
   const { id } = useParams<{ id: string }>();
-  const nav = useNavigate();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [loading, setLoading]     = useState(true);
-  const [party, setParty]         = useState<PartyRow | null>(null);
-  const [queueLen, setQueueLen]   = useState<number>(0);
+  /* ------------------------------- local state ------------------------------ */
+  const [party, setParty] = useState<Party | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  /* ------------------------------------------------ fetch party */
+  const [turnModalOpen, setTurnModalOpen] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [thankYouOpen, setThankYouOpen] = useState(false);
+  const [noShowOpen, setNoShowOpen] = useState(false);
+
+  /* ----------------------- buscar dados iniciais (Supabase) ----------------- */
   useEffect(() => {
-    async function load() {
-      if (!id) { nav("/"); return; }
+    let sub: ReturnType<typeof supabase.channel> | null = null;
 
-      /* 1️⃣ Party + restaurante ---------------------------------- */
-      const { data: p, error: err } = await supabase
+    const fetchData = async () => {
+      if (!id) return navigate("/");
+
+      const { data, error } = await supabase
         .from("parties")
         .select(
-          "*, restaurant:restaurants(name, menu_url, tolerance_minutes)"
+          `
+            id, name, phone, party_size,
+            queue_position, estimated_wait_minutes, tolerance_minutes,
+            restaurant:restaurants ( id, name, menu_url )
+          `
         )
         .eq("id", id)
-        .single<PartyRow>();
+        .single();
 
-      if (err || !p) {
-        toast({ title:"Status não encontrado", variant:"destructive" });
-        nav("/"); return;
+      if (error || !data) {
+        toast({
+          title: "Erro ao carregar dados",
+          description: error?.message ?? "Entrada não encontrada",
+          variant: "destructive",
+        });
+        return navigate("/");
       }
-      setParty(p);
 
-      /* 2️⃣ Quantos ainda estão na fila do mesmo restaurante ------ */
-      const { count } = await supabase
-        .from("parties")
-        .select("*", { count: "exact", head: true })
-        .eq("restaurant_id", p.restaurant_id)
-        .in("status", ["waiting","next","ready"]);
-      setQueueLen(count ?? 0);
-
+      setParty(data as Party);
       setLoading(false);
-    }
-    load();
-  }, [id, nav, toast]);
 
-  /* ------------------------------------------------ render */
-  if (loading) {
+      /* --- subscribe to realtime updates (opcional) ------------------------ */
+      sub = supabase
+        .channel("party_updates")
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "parties",
+            filter: `id=eq.${id}`,
+          },
+          (payload) => {
+            setParty((old) => ({ ...(old as Party), ...(payload.new as any) }));
+          }
+        )
+        .subscribe();
+    };
+
+    fetchData();
+    return () => {
+      if (sub) supabase.removeChannel(sub);
+    };
+  }, [id]);
+
+  /* -------------------------- progress / contagem -------------------------- */
+  const progress =
+    party && party.queue_position !== null && party.queue_position >= 0
+      ? ((party.queue_position === 0 ? 1 : 0) * 100 +
+          Math.max(
+            0,
+            100 -
+              ((party.queue_position ?? 0) + 1) *
+                (100 / ((party.queue_position ?? 0) + 4))
+          ))
+      : 0;
+
+  /* ----------------------- handlers / botões / diálogos -------------------- */
+  const handleLeaveQueue = () => setLeaveConfirmOpen(true);
+  const handleCancelLeave = () => setLeaveConfirmOpen(false);
+  const handleConfirmLeave = () => {
+    setLeaveConfirmOpen(false);
+    setThankYouOpen(true);
+  };
+
+  const handleRejoinQueue = () => {
+    setNoShowOpen(false);
+    /* lógica real de reinserção ficaria aqui */
+  };
+
+  /* -------------------------------------------------------------------------- */
+  /*  UI                                                                        */
+  /* -------------------------------------------------------------------------- */
+
+  if (loading || !party)
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center h-screen text-gray-600">
         Carregando…
       </div>
     );
-  }
-  if (!party) return null;
-
-  const progress =
-    queueLen > 0 ? ((queueLen - party.queue_position) / queueLen) * 100 : 0;
-
-  const tolerance = party.restaurant?.tolerance_minutes ?? 2;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">
-      {/* topo */}
-      <div className="flex items-center justify-between p-4">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => nav("/")}
-          className="flex items-center space-x-2"
-        >
-          <ArrowLeft className="w-4 h-4" /> <span>Início</span>
-        </Button>
-        <h1 className="font-semibold">Status da Fila</h1>
-        <div className="w-16" />
+      {/* HEADER (sem seta voltar) */}
+      <div className="py-4 text-center">
+        <h1 className="text-lg font-semibold">Status da Fila</h1>
       </div>
 
-      {/* conteúdo */}
       <div className="max-w-md mx-auto px-6 pb-12 space-y-6">
         {/* Saudação */}
         <div className="bg-white p-6 rounded-2xl shadow text-center space-y-1">
-          <h2 className="text-2xl font-bold">Olá {party.name}!</h2>
+          <h2 className="text-2xl font-bold">
+            Olá {party.name}! <span>👋</span>
+          </h2>
           <p className="text-gray-600">
             Grupo de {party.party_size}{" "}
             {party.party_size === 1 ? "pessoa" : "pessoas"}
@@ -111,7 +165,7 @@ export default function Status() {
         <div className="bg-white p-6 rounded-2xl shadow space-y-4">
           <div className="text-center">
             <p className="text-5xl font-bold mb-1">
-              {party.queue_position === 0 ? "🎉" : `#${party.queue_position}`}
+              {party.queue_position === 0 ? "🎉" : party.queue_position ?? "–"}
             </p>
             <p className="text-gray-600">
               {party.queue_position === 0
@@ -120,32 +174,76 @@ export default function Status() {
             </p>
           </div>
 
-          <Progress value={progress} className="h-3" />
+          {/* PROGRESSO */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Progresso</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-3" />
+          </div>
 
-          {party.queue_position === 0 ? (
-            <p className="text-center text-green-600 font-medium">
-              Você tem {tolerance} min para chegar até a recepção.
-            </p>
-          ) : (
-            <p className="text-center text-gray-700">
-              Tempo estimado&nbsp;
-              <span className="font-semibold">
-                {party.estimated_wait_minutes} min
-              </span>
-            </p>
-          )}
+          {/* TEMPO */}
+          <p className="text-center text-gray-700">
+            Tempo estimado{" "}
+            <span className="font-semibold">
+              {(party.queue_position ?? 0) === 0
+                ? party.tolerance_minutes
+                : party.estimated_wait_minutes ?? "--"}{" "}
+              min
+            </span>
+          </p>
         </div>
 
-        {/* Ações */}
+        {/* AÇÕES */}
         {party.restaurant?.menu_url && (
           <Button
             className="w-full h-12 bg-black text-white hover:bg-gray-800"
             onClick={() => window.open(party.restaurant!.menu_url!, "_blank")}
           >
-            🍽️&nbsp;Ver Cardápio
+            🍽️ Ver Cardápio
           </Button>
         )}
+
+        <Button
+          variant="outline"
+          className="w-full h-12 border-red-200 text-red-600 hover:bg-red-50"
+          onClick={handleLeaveQueue}
+        >
+          Sair da Fila
+        </Button>
       </div>
+
+      {/* diálogos */}
+      <TurnModal
+        isOpen={turnModalOpen}
+        onCancel={() => setTurnModalOpen(false)}
+        onConfirm={() => setTurnModalOpen(false)}
+        toleranceTimeLeft={(party.tolerance_minutes ?? 0) * 60}
+        restaurantName={party.restaurant?.name ?? ""}
+      />
+
+      <LeaveQueueConfirmation
+        isOpen={leaveConfirmOpen}
+        onCancel={handleCancelLeave}
+        onConfirm={handleConfirmLeave}
+        restaurantName={party.restaurant?.name ?? ""}
+      />
+
+      <ThankYouScreen
+        isOpen={thankYouOpen}
+        onJoinAgain={() => navigate("/check-in")}
+        restaurantName={party.restaurant?.name ?? ""}
+      />
+
+      <NoShowScreen
+        isOpen={noShowOpen}
+        onRejoinQueue={handleRejoinQueue}
+        restaurantName={party.restaurant?.name ?? ""}
+        newPosition={(party.queue_position ?? 0) + 1}
+      />
     </div>
   );
-}
+};
+
+export default Status;
