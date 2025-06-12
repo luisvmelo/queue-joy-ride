@@ -1,7 +1,6 @@
 /* -------------------------------------------------------------------------- */
-/*  Status – mostra posição, progresso, ETA e contagem de tolerância          */
+/*  Status – posição, progresso, ETA e contagem de tolerância                */
 /* -------------------------------------------------------------------------- */
-
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -20,13 +19,11 @@ import { supabase } from "@/integrations/supabase/client";
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
 /* -------------------------------------------------------------------------- */
-
 interface Restaurant {
   id: string;
   name: string;
   menu_url: string | null;
 }
-
 interface Party {
   id: string;
   name: string;
@@ -50,14 +47,14 @@ const Status = () => {
   const [party, setParty] = useState<Party | null>(null);
   const [loading, setLoading] = useState(true);
 
-  /** cronômetro de tolerância (segundos) */
+  /** cronômetro da tolerância (segundos) */
   const [toleranceLeft, setToleranceLeft] = useState<number | null>(null);
 
   /* modais */
-  const [turnModal, setTurnModal] = useState(false);
-  const [leaveModal, setLeaveModal] = useState(false);
-  const [thanksOpen, setThanksOpen] = useState(false);
-  const [noShowOpen, setNoShowOpen] = useState(false);
+  const [turnModal, setTurnModal]       = useState(false);
+  const [leaveModal, setLeaveModal]     = useState(false);
+  const [thanksOpen, setThanksOpen]     = useState(false);
+  const [noShowOpen, setNoShowOpen]     = useState(false);
 
   /* ------------------------------------------------------------------------ */
   /*  Query inicial + assinatura realtime                                     */
@@ -66,34 +63,33 @@ const Status = () => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
     const load = async () => {
-      if (!id) return navigate("/");
+      if (!id) { navigate("/"); return; }
 
       const { data, error } = await supabase
         .from("parties")
-        .select(
-          `
+        .select(`
           id, name, party_size,
           queue_position, initial_position,
           estimated_wait_minutes, tolerance_minutes,
           restaurant:restaurants ( id, name, menu_url )
-        `
-        )
+        `)
         .eq("id", id)
         .single();
 
       if (error || !data) {
         toast({
           title: "Erro ao carregar dados",
-          description: error?.message ?? "Registro não encontrado.",
+          description: error?.message ?? "Registro não encontrado",
           variant: "destructive",
         });
-        return navigate("/");
+        navigate("/");
+        return;
       }
 
-      setParty(data as Party);
+      setParty(data as unknown as Party);
       setLoading(false);
 
-      /* realtime ----------------------------------------------------------- */
+      /* realtime */
       channel = supabase
         .channel("party_updates")
         .on(
@@ -106,11 +102,11 @@ const Status = () => {
     };
 
     load();
-    return () => channel && supabase.removeChannel(channel);
-  }, [id]);
+    return () => { if (channel) supabase.removeChannel(channel); };
+  }, [id, navigate, toast]);
 
   /* ------------------------------------------------------------------------ */
-  /*  Inicia contagem de tolerância quando posição vira 0                     */
+  /*  Tolerância – inicia contagem quando posição vira 0                      */
   /* ------------------------------------------------------------------------ */
   useEffect(() => {
     if (!party) return;
@@ -118,49 +114,48 @@ const Status = () => {
     if (party.queue_position === 0) {
       setToleranceLeft((party.tolerance_minutes ?? 0) * 60);
     } else {
-      setToleranceLeft(null); // não mostrar contagem antes da vez chegar
+      setToleranceLeft(null);
     }
   }, [party?.queue_position, party?.tolerance_minutes]);
 
-  /* Decrementa 1s por segundo */
   useEffect(() => {
     if (toleranceLeft === null) return;
-    if (toleranceLeft <= 0) return;
+    if (toleranceLeft <= 0) { setNoShowOpen(true); return; }
 
-    const id = setInterval(() => {
-      setToleranceLeft((prev) => (prev !== null ? prev - 1 : null));
+    const interval = setInterval(() => {
+      setToleranceLeft((prev) => (prev ? prev - 1 : null));
     }, 1000);
-
-    return () => clearInterval(id);
+    return () => clearInterval(interval);
   }, [toleranceLeft]);
 
   /* ------------------------------------------------------------------------ */
   /*  helpers                                                                 */
   /* ------------------------------------------------------------------------ */
   const progress = (() => {
-    if (!party || party.queue_position == null || party.initial_position == null) return 0;
+    if (!party || party.initial_position == null) return 0;
     if (party.initial_position === 0) return 100;
-    const perc =
-      ((party.initial_position - (party.queue_position ?? 0)) / party.initial_position) * 100;
+    const current = party.queue_position ?? party.initial_position;
+    const perc = ((party.initial_position - current) / party.initial_position) * 100;
     return Math.min(Math.max(Math.round(perc), 0), 100);
   })();
 
   /* ------------------------------------------------------------------------ */
   /*  UI – carregando                                                         */
   /* ------------------------------------------------------------------------ */
-  if (loading || !party)
+  if (loading || !party) {
     return (
       <div className="flex items-center justify-center h-screen text-gray-600">
         Carregando…
       </div>
     );
+  }
 
   /* ------------------------------------------------------------------------ */
   /*  UI – página principal                                                   */
   /* ------------------------------------------------------------------------ */
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">
-      {/* header simples */}
+      {/* header */}
       <header className="py-4 text-center">
         <h1 className="text-lg font-semibold">Status da Fila</h1>
       </header>
@@ -187,7 +182,7 @@ const Status = () => {
               </>
             ) : (
               <>
-                <div className="text-4xl font-bold">{party.queue_position}</div>
+                <div className="text-4xl font-bold">{party.queue_position ?? "–"}</div>
                 <p className="text-gray-600">Sua posição na fila</p>
               </>
             )}
@@ -251,10 +246,7 @@ const Status = () => {
       <LeaveQueueConfirmation
         isOpen={leaveModal}
         onCancel={() => setLeaveModal(false)}
-        onConfirm={() => {
-          setLeaveModal(false);
-          setThanksOpen(true);
-        }}
+        onConfirm={() => { setLeaveModal(false); setThanksOpen(true); }}
         restaurantName={party.restaurant?.name ?? ""}
       />
 
