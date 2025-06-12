@@ -1,4 +1,7 @@
-// src/pages/Status.tsx
+/* -------------------------------------------------------------------------- */
+/*  Status – mostra posição, progresso, ETA e contagem de tolerância          */
+/* -------------------------------------------------------------------------- */
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -28,10 +31,10 @@ interface Party {
   id: string;
   name: string;
   party_size: number;
-  queue_position: number | null;         // posição atual (0 == pronto)
-  initial_position: number | null;       // posição ao entrar
-  estimated_wait_minutes: number | null; // ETA calculado
-  tolerance_minutes: number | null;      // prazo p/ chegar quando posição==0
+  queue_position: number | null;
+  initial_position: number | null;
+  estimated_wait_minutes: number | null;
+  tolerance_minutes: number | null;
   restaurant: Restaurant | null;
 }
 
@@ -47,6 +50,10 @@ const Status = () => {
   const [party, setParty] = useState<Party | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /** cronômetro de tolerância (segundos) */
+  const [toleranceLeft, setToleranceLeft] = useState<number | null>(null);
+
+  /* modais */
   const [turnModal, setTurnModal] = useState(false);
   const [leaveModal, setLeaveModal] = useState(false);
   const [thanksOpen, setThanksOpen] = useState(false);
@@ -92,7 +99,8 @@ const Status = () => {
         .on(
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "parties", filter: `id=eq.${id}` },
-          ({ new: next }) => setParty((prev) => ({ ...(prev as Party), ...(next as any) }))
+          ({ new: next }) =>
+            setParty((prev) => ({ ...(prev as Party), ...(next as any) }))
         )
         .subscribe();
     };
@@ -102,9 +110,33 @@ const Status = () => {
   }, [id]);
 
   /* ------------------------------------------------------------------------ */
+  /*  Inicia contagem de tolerância quando posição vira 0                     */
+  /* ------------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!party) return;
+
+    if (party.queue_position === 0) {
+      setToleranceLeft((party.tolerance_minutes ?? 0) * 60);
+    } else {
+      setToleranceLeft(null); // não mostrar contagem antes da vez chegar
+    }
+  }, [party?.queue_position, party?.tolerance_minutes]);
+
+  /* Decrementa 1s por segundo */
+  useEffect(() => {
+    if (toleranceLeft === null) return;
+    if (toleranceLeft <= 0) return;
+
+    const id = setInterval(() => {
+      setToleranceLeft((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, [toleranceLeft]);
+
+  /* ------------------------------------------------------------------------ */
   /*  helpers                                                                 */
   /* ------------------------------------------------------------------------ */
-  /** progresso 0 – 100 % */
   const progress = (() => {
     if (!party || party.queue_position == null || party.initial_position == null) return 0;
     if (party.initial_position === 0) return 100;
@@ -112,12 +144,6 @@ const Status = () => {
       ((party.initial_position - (party.queue_position ?? 0)) / party.initial_position) * 100;
     return Math.min(Math.max(Math.round(perc), 0), 100);
   })();
-
-  /** tempo a exibir */
-  const etaText =
-    party?.queue_position === 0
-      ? `${party.tolerance_minutes ?? "--"}`
-      : `${party?.estimated_wait_minutes ?? "--"}`;
 
   /* ------------------------------------------------------------------------ */
   /*  UI – carregando                                                         */
@@ -176,12 +202,13 @@ const Status = () => {
             <Progress value={progress} className="h-3" />
           </div>
 
-          {/* tempo */}
+          {/* tempo / contagem */}
           <div className="text-center">
             {party.queue_position === 0 ? (
               <TimeDisplay
-                timeInSeconds={(party.tolerance_minutes ?? 0) * 60}
+                timeInSeconds={toleranceLeft ?? 0}
                 label="Tempo para chegar"
+                isCountdown
               />
             ) : (
               <TimeDisplay
@@ -197,7 +224,7 @@ const Status = () => {
         {party.restaurant?.menu_url && (
           <Button
             className="w-full h-12 bg-black text-white hover:bg-gray-800"
-            onClick={() => window.open(party.restaurant!.menu_url!, "_blank")}
+            onClick={() => window.open(party.restaurant.menu_url!, "_blank")}
           >
             🍽️ Ver Cardápio
           </Button>
@@ -218,7 +245,7 @@ const Status = () => {
         onConfirm={() => setTurnModal(false)}
         onCancel={() => setTurnModal(false)}
         restaurantName={party.restaurant?.name ?? ""}
-        toleranceTimeLeft={(party.tolerance_minutes ?? 0) * 60}
+        toleranceTimeLeft={toleranceLeft ?? (party.tolerance_minutes ?? 0) * 60}
       />
 
       <LeaveQueueConfirmation
