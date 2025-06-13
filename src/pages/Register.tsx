@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -297,18 +298,18 @@ const Register = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate(\"/\")}
-                className=\"flex-1\"
+                onClick={() => navigate("/")}
+                className="flex-1"
               >
                 Voltar
               </Button>
               
               <Button
-                type=\"submit\"
+                type="submit"
                 disabled={loading}
-                className=\"flex-1 bg-black text-white hover:bg-gray-800\"
+                className="flex-1 bg-black text-white hover:bg-gray-800"
               >
-                {loading ? \"Cadastrando...\" : \"Cadastrar Estabelecimento\"}
+                {loading ? "Cadastrando..." : "Cadastrar Estabelecimento"}
               </Button>
             </div>
           </form>
