@@ -11,6 +11,7 @@ import Restaurants from "./pages/Restaurants";
 import EstabelecimentoDetalhes from "./pages/EstabelecimentoDetalhes";
 import ReceptionistDashboard from "./pages/ReceptionistDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EmailConfirm from "./pages/EmailConfirm";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/check-in" element={<CheckIn />} />
           <Route path="/check-in/:restaurantId" element={<CheckIn />} />
           <Route path="/status/:id" element={<Status />} />
