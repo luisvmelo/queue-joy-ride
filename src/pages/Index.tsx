@@ -1,38 +1,26 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import QRScanner from "@/components/QRScanner";
-
 const Index = () => {
   const navigate = useNavigate();
   const [showScanner, setShowScanner] = useState(false);
-
   const handleScanQRCode = () => {
     setShowScanner(true);
   };
-
   const handleCloseScanner = () => {
     setShowScanner(false);
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex flex-col">
+  return <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex flex-col">
       {/* Header */}
       <div className="text-center pt-12 pb-8 relative">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Line-up</h1>
         <p className="text-gray-600 text-lg">Bem-vindo! Pule a fila e entre na nossa lista digital</p>
         
-        {/* Login Empresa Button */}
+        {/* Cadastrar Empresa Button */}
         <div className="absolute top-6 right-6">
-          <Button 
-            onClick={() => navigate("/login")} 
-            variant="outline" 
-            size="sm"
-            className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50"
-          >
-            Login empresa
-          </Button>
+          <Button onClick={() => navigate("/register")} variant="outline" size="sm" className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50">Área de Admin
+        </Button>
         </div>
       </div>
 
@@ -64,10 +52,7 @@ const Index = () => {
 
           {/* CTA Buttons */}
           <div className="space-y-3">
-            <Button 
-              onClick={handleScanQRCode} 
-              className="w-full h-14 text-lg font-semibold bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-            >
+            <Button onClick={handleScanQRCode} className="w-full h-14 text-lg font-semibold bg-black text-white hover:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
               Escanear QR Code
             </Button>
 
@@ -89,11 +74,7 @@ const Index = () => {
       </div>
 
       {/* QR Scanner Modal */}
-      {showScanner && (
-        <QRScanner onClose={handleCloseScanner} />
-      )}
-    </div>
-  );
+      {showScanner && <QRScanner onClose={handleCloseScanner} />}
+    </div>;
 };
-
 export default Index;
