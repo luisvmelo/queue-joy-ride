@@ -2,55 +2,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { QrCode, Store, LogIn } from "lucide-react";
+import { QrCode, Store, LogIn, Building2 } from "lucide-react";
 import QRScanner from "@/components/QRScanner";
 
 const Index = () => {
   const navigate = useNavigate();
   const [showScanner, setShowScanner] = useState(false);
 
-  const handleScanResult = (result: string) => {
-    console.log("QR Code resultado:", result);
-    
-    try {
-      const url = new URL(result);
-      const pathSegments = url.pathname.split('/');
-      
-      if (pathSegments.includes('estabelecimento')) {
-        const restaurantIndex = pathSegments.indexOf('estabelecimento');
-        const restaurantId = pathSegments[restaurantIndex + 1];
-        
-        if (restaurantId) {
-          navigate(`/estabelecimento/${restaurantId}`);
-          return;
-        }
-      }
-      
-      if (pathSegments.includes('check-in')) {
-        const checkInIndex = pathSegments.indexOf('check-in');
-        const restaurantId = pathSegments[checkInIndex + 1];
-        
-        if (restaurantId) {
-          navigate(`/check-in/${restaurantId}`);
-          return;
-        }
-      }
-      
-      navigate(url.pathname);
-    } catch (error) {
-      console.error("Erro ao processar QR code:", error);
-      if (result.includes('/')) {
-        navigate(result);
-      }
-    }
-    
-    setShowScanner(false);
-  };
-
   if (showScanner) {
     return (
       <QRScanner
-        onScanResult={handleScanResult}
         onClose={() => setShowScanner(false)}
       />
     );
@@ -58,8 +19,18 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">
-      {/* Header */}
-      <header className="py-6 text-center">
+      {/* Header with Register Button */}
+      <header className="py-6 text-center relative">
+        <Button
+          variant="outline"
+          size="sm"
+          className="absolute top-4 right-4 text-sm border-blue-200 text-blue-600 hover:bg-blue-50"
+          onClick={() => navigate("/register")}
+        >
+          <Building2 className="w-4 h-4 mr-2" />
+          Cadastrar sua empresa
+        </Button>
+        
         <h1 className="text-4xl font-bold text-gray-800 mb-2">FilaFácil</h1>
         <p className="text-lg text-gray-600">
           Gerencie suas filas de forma inteligente
@@ -94,7 +65,7 @@ const Index = () => {
           onClick={() => navigate("/auth")}
         >
           <LogIn className="w-6 h-6 mr-3" />
-          Entrar / Cadastrar Estabelecimento
+          Entrar / Acessar Painel
         </Button>
       </main>
 
