@@ -14,7 +14,9 @@ export type Database = {
           arrived_at: string | null
           confirmed_by_receptionist: boolean | null
           created_at: string | null
+          estimated_wait_minutes: number | null
           id: string
+          initial_position: number | null
           joined_at: string | null
           name: string
           notification_type: string | null
@@ -27,13 +29,17 @@ export type Database = {
           restaurant_id: string | null
           seated_at: string | null
           status: string | null
+          tolerance_minutes: number | null
           updated_at: string | null
+          wait_min: number | null
         }
         Insert: {
           arrived_at?: string | null
           confirmed_by_receptionist?: boolean | null
           created_at?: string | null
+          estimated_wait_minutes?: number | null
           id?: string
+          initial_position?: number | null
           joined_at?: string | null
           name: string
           notification_type?: string | null
@@ -46,13 +52,17 @@ export type Database = {
           restaurant_id?: string | null
           seated_at?: string | null
           status?: string | null
+          tolerance_minutes?: number | null
           updated_at?: string | null
+          wait_min?: number | null
         }
         Update: {
           arrived_at?: string | null
           confirmed_by_receptionist?: boolean | null
           created_at?: string | null
+          estimated_wait_minutes?: number | null
           id?: string
+          initial_position?: number | null
           joined_at?: string | null
           name?: string
           notification_type?: string | null
@@ -65,7 +75,9 @@ export type Database = {
           restaurant_id?: string | null
           seated_at?: string | null
           status?: string | null
+          tolerance_minutes?: number | null
           updated_at?: string | null
+          wait_min?: number | null
         }
         Relationships: [
           {
@@ -77,39 +89,171 @@ export type Database = {
           },
         ]
       }
-      restaurants: {
+      profiles: {
         Row: {
-          avg_seat_time_minutes: number | null
           created_at: string | null
+          email: string
+          full_name: string
           id: string
-          menu_url: string | null
-          name: string
-          tolerance_minutes: number | null
           updated_at: string | null
+          user_type: Database["public"]["Enums"]["user_type"]
         }
         Insert: {
-          avg_seat_time_minutes?: number | null
           created_at?: string | null
-          id?: string
-          menu_url?: string | null
-          name: string
-          tolerance_minutes?: number | null
+          email: string
+          full_name: string
+          id: string
           updated_at?: string | null
+          user_type?: Database["public"]["Enums"]["user_type"]
         }
         Update: {
-          avg_seat_time_minutes?: number | null
           created_at?: string | null
+          email?: string
+          full_name?: string
           id?: string
-          menu_url?: string | null
-          name?: string
-          tolerance_minutes?: number | null
           updated_at?: string | null
+          user_type?: Database["public"]["Enums"]["user_type"]
         }
         Relationships: []
       }
+      restaurant_staff: {
+        Row: {
+          created_at: string | null
+          id: string
+          restaurant_id: string | null
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          restaurant_id?: string | null
+          role: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          restaurant_id?: string | null
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_staff_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_staff_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurants: {
+        Row: {
+          address: string | null
+          avg_seat_time_minutes: number | null
+          created_at: string | null
+          default_tolerance_minutes: number
+          description: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          menu_url: string | null
+          name: string
+          opening_hours: Json | null
+          owner_id: string | null
+          phone: string | null
+          tolerance_minutes: number | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          avg_seat_time_minutes?: number | null
+          created_at?: string | null
+          default_tolerance_minutes?: number
+          description?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          menu_url?: string | null
+          name: string
+          opening_hours?: Json | null
+          owner_id?: string | null
+          phone?: string | null
+          tolerance_minutes?: number | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          avg_seat_time_minutes?: number | null
+          created_at?: string | null
+          default_tolerance_minutes?: number
+          description?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          menu_url?: string | null
+          name?: string
+          opening_hours?: Json | null
+          owner_id?: string | null
+          phone?: string | null
+          tolerance_minutes?: number | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurants_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      v_avg_wait_by_position: {
+        Row: {
+          avg_wait_min: number | null
+          initial_position: number | null
+          restaurant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parties_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_restaurant_wait_stats: {
+        Row: {
+          avg_step_wait_min: number | null
+          restaurant_id: string | null
+          samples: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parties_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       confirm_party_arrival: {
@@ -140,7 +284,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      user_type: "owner" | "admin" | "receptionist"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -255,6 +399,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_type: ["owner", "admin", "receptionist"],
+    },
   },
 } as const

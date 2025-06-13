@@ -19,9 +19,21 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex flex-col">
       {/* Header */}
-      <div className="text-center pt-12 pb-8">
+      <div className="text-center pt-12 pb-8 relative">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Line-up</h1>
         <p className="text-gray-600 text-lg">Bem-vindo! Pule a fila e entre na nossa lista digital</p>
+        
+        {/* Cadastrar Empresa Button */}
+        <div className="absolute top-6 right-6">
+          <Button 
+            onClick={() => navigate("/register")} 
+            variant="outline" 
+            size="sm"
+            className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50"
+          >
+            Cadastrar empresa
+          </Button>
+        </div>
       </div>
 
       {/* Main Content */}
