@@ -12,7 +12,9 @@ import EstabelecimentoDetalhes from "./pages/EstabelecimentoDetalhes";
 import ReceptionistDashboard from "./pages/ReceptionistDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Register from "./pages/Register";
+import EmailConfirm from "./pages/EmailConfirm";
 import NotFound from "./pages/NotFound";
+import PrivateRoute from "./components/PrivateRoute";
 
 const queryClient = new QueryClient();
 
@@ -30,8 +32,16 @@ const App = () => (
           <Route path="/restaurants" element={<Restaurants />} />
           <Route path="/estabelecimento/:restaurantId" element={<EstabelecimentoDetalhes />} />
           <Route path="/receptionist" element={<ReceptionistDashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/auth/confirm" element={<EmailConfirm />} />
+          <Route 
+            path="/admin" 
+            element={
+              <PrivateRoute>
+                <AdminDashboard />
+              </PrivateRoute>
+            } 
+          />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

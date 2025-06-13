@@ -62,49 +62,43 @@ const Register = () => {
     setLoading(true);
 
     try {
+      // Salvar dados do formulário no localStorage para usar após confirmação
+      localStorage.setItem('pendingRestaurantData', JSON.stringify({
+        restaurantName: formData.restaurantName,
+        description: formData.description,
+        address: formData.address,
+        phone: formData.phone,
+        website: formData.website,
+        email: formData.email,
+        avgSeatTimeMinutes: formData.avgSeatTimeMinutes,
+        defaultToleranceMinutes: formData.defaultToleranceMinutes
+      }));
+
       // Cadastrar usuário no Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
             full_name: formData.fullName,
             user_type: 'owner'
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/auth/confirm`
         }
       });
 
       if (authError) throw authError;
 
-      if (authData.user) {
-        // Criar o restaurante
-        const { error: restaurantError } = await supabase
-          .from('restaurants')
-          .insert({
-            name: formData.restaurantName,
-            description: formData.description,
-            address: formData.address,
-            phone: formData.phone,
-            website: formData.website,
-            email: formData.email,
-            avg_seat_time_minutes: formData.avgSeatTimeMinutes,
-            default_tolerance_minutes: formData.defaultToleranceMinutes,
-            owner_id: authData.user.id,
-            is_active: true
-          });
+      toast({
+        title: "Cadastro realizado!",
+        description: "Confira seu e-mail para confirmar a conta e finalizar o cadastro do estabelecimento.",
+      });
 
-        if (restaurantError) throw restaurantError;
+      // Redirecionar para página inicial
+      setTimeout(() => {
+        navigate("/");
+      }, 3000);
 
-        toast({
-          title: "Sucesso!",
-          description: "Estabelecimento cadastrado com sucesso! Verifique seu email para confirmar a conta.",
-        });
-
-        // Redirecionar para página de login ou dashboard
-        setTimeout(() => {
-          navigate("/");
-        }, 2000);
-      }
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
       toast({
@@ -309,7 +303,7 @@ const Register = () => {
                 disabled={loading}
                 className="flex-1 bg-black text-white hover:bg-gray-800"
               >
-                {loading ? "Cadastrando..." : "Cadastrar Estabelecimento"}
+                {loading ? "Cadastrando..." : "Criar Conta"}
               </Button>
             </div>
           </form>
