@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import QRCodeGenerator from "@/components/QRCodeGenerator";
 import CurrentQueue from "@/components/CurrentQueue";
 import QueueStatus from "@/components/QueueStatus";
+import ManualQueueEntry from "@/components/ManualQueueEntry";
 
 const ReceptionistDashboard = () => {
   const navigate = useNavigate();
@@ -212,6 +213,14 @@ const ReceptionistDashboard = () => {
             <QrCode className="w-4 h-4 mr-2" />
             QR Code
           </Button>
+        </div>
+
+        {/* Manual Queue Entry - Always visible at the top */}
+        <div className="mb-6">
+          <ManualQueueEntry 
+            restaurantId={restaurantId}
+            onPartyAdded={fetchQueueData}
+          />
         </div>
 
         {/* Content */}
