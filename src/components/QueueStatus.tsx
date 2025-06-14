@@ -1,65 +1,54 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Users, CheckCircle, XCircle, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
-
 interface QueueStatusProps {
   queueData: any[];
   onConfirmArrival: (partyId: string) => void;
   onMarkNoShow: (partyId: string) => void;
 }
-
-const QueueStatus = ({ queueData, onConfirmArrival, onMarkNoShow }: QueueStatusProps) => {
+const QueueStatus = ({
+  queueData,
+  onConfirmArrival,
+  onMarkNoShow
+}: QueueStatusProps) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
-  
   const currentParty = queueData.find(party => party.status === 'ready') || queueData[0];
   const nextParties = queueData.filter(party => party.status === 'waiting').slice(0, 3);
-
   useEffect(() => {
     if (currentParty?.notified_ready_at) {
       const notifiedTime = new Date(currentParty.notified_ready_at);
       const toleranceMs = (currentParty.tolerance_minutes || 2) * 60 * 1000;
-      
       const interval = setInterval(() => {
         const now = new Date();
         const elapsed = now.getTime() - notifiedTime.getTime();
         const remaining = Math.max(0, toleranceMs - elapsed);
         setTimeLeft(Math.ceil(remaining / 1000));
-        
         if (remaining <= 0) {
           clearInterval(interval);
         }
       }, 1000);
-
       return () => clearInterval(interval);
     }
   }, [currentParty]);
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-
   if (!queueData.length) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="text-center py-12">
           <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma pessoa na fila</h3>
           <p className="text-gray-600">Quando alguém entrar na lista, aparecerá aqui</p>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Current Party */}
-      {currentParty && (
-        <Card className="border-2 border-orange-200 bg-orange-50">
+      {currentParty && <Card className="border-2 border-orange-200 bg-orange-50">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center space-x-2">
@@ -84,41 +73,28 @@ const QueueStatus = ({ queueData, onConfirmArrival, onMarkNoShow }: QueueStatusP
                 </p>
               </div>
 
-              {currentParty.status === 'ready' && (
-                <div className="text-center">
+              {currentParty.status === 'ready' && <div className="text-center">
                   <div className="text-3xl font-bold text-orange-600 mb-1">
                     {formatTime(timeLeft)}
                   </div>
                   <p className="text-sm text-gray-600">
                     {timeLeft > 0 ? 'Tempo restante' : 'Tempo esgotado'}
                   </p>
-                </div>
-              )}
+                </div>}
 
               <div className="flex flex-col space-y-2">
-                <Button 
-                  onClick={() => onConfirmArrival(currentParty.party_id)}
-                  className="bg-green-600 hover:bg-green-700"
-                >
+                <Button onClick={() => onConfirmArrival(currentParty.party_id)} className="bg-green-600 hover:bg-green-700">
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Confirmar Chegada
                 </Button>
-                <Button 
-                  onClick={() => onMarkNoShow(currentParty.party_id)}
-                  variant="destructive"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Marcar Ausente
-                </Button>
+                
               </div>
             </div>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
       {/* Next in Line */}
-      {nextParties.length > 0 && (
-        <Card>
+      {nextParties.length > 0 && <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Users className="w-5 h-5" />
@@ -127,11 +103,7 @@ const QueueStatus = ({ queueData, onConfirmArrival, onMarkNoShow }: QueueStatusP
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {nextParties.map((party, index) => (
-                <div 
-                  key={party.party_id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
+              {nextParties.map((party, index) => <div key={party.party_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                       <span className="text-blue-600 font-semibold text-sm">
@@ -153,12 +125,10 @@ const QueueStatus = ({ queueData, onConfirmArrival, onMarkNoShow }: QueueStatusP
                       Na fila há {Math.floor((new Date().getTime() - new Date(party.joined_at).getTime()) / (1000 * 60))} min
                     </p>
                   </div>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
@@ -185,8 +155,6 @@ const QueueStatus = ({ queueData, onConfirmArrival, onMarkNoShow }: QueueStatusP
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default QueueStatus;
