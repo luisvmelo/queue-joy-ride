@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -21,12 +22,52 @@ const CheckIn = () => {
 
   /* -------------------------------------- state */
   const [loading, setLoading] = useState(false);
+  const [restaurant, setRestaurant] = useState<any>(null);
+  const [currentQueueSize, setCurrentQueueSize] = useState(0);
   const [form, setForm] = useState({
     name: "",
     phone: "",
     partySize: "",
     notificationType: "sms",
   });
+
+  /* -------------------------------------- effects */
+  useEffect(() => {
+    const fetchRestaurantData = async () => {
+      try {
+        const currentRestaurantId = restaurantId ?? DEFAULT_RESTAURANT_ID;
+        
+        // Fetch restaurant info
+        const { data: restaurantData, error: restaurantError } = await supabase
+          .from("restaurants")
+          .select("*")
+          .eq("id", currentRestaurantId)
+          .single();
+
+        if (restaurantError) throw restaurantError;
+        setRestaurant(restaurantData);
+
+        // Fetch current queue size
+        const { data: queueData, error: queueError } = await supabase
+          .from("parties")
+          .select("id")
+          .eq("restaurant_id", currentRestaurantId)
+          .eq("status", "waiting");
+
+        if (queueError) throw queueError;
+        setCurrentQueueSize(queueData?.length || 0);
+      } catch (error) {
+        console.error("Error fetching restaurant data:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os dados do restaurante.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchRestaurantData();
+  }, [restaurantId, toast]);
 
   /* -------------------------------------- helpers */
   const setField =
@@ -97,11 +138,11 @@ const CheckIn = () => {
     }
   };
 
-
   // Calcular tempo estimado antes de entrar na fila
-    const estimatedTime = restaurant?.avg_seat_time_minutes 
-     ? (currentQueueSize + 1) * restaurant.avg_seat_time_minutes
-     : (currentQueueSize + 1) * 45;
+  const estimatedTime = restaurant?.avg_seat_time_minutes 
+    ? (currentQueueSize + 1) * restaurant.avg_seat_time_minutes
+    : (currentQueueSize + 1) * 45;
+
   /* -------------------------------------- UI */
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">

@@ -84,6 +84,13 @@ export type Database = {
             foreignKeyName: "parties_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
+            referencedRelation: "restaurant_queue_stats"
+            referencedColumns: ["restaurant_id"]
+          },
+          {
+            foreignKeyName: "parties_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
@@ -116,6 +123,79 @@ export type Database = {
         }
         Relationships: []
       }
+      queue_history: {
+        Row: {
+          called_at: string | null
+          cancelled_at: string | null
+          created_at: string | null
+          final_status: string | null
+          id: string
+          joined_at: string
+          name: string
+          party_id: string | null
+          party_size: number
+          phone: string
+          queue_position: number
+          restaurant_id: string | null
+          seated_at: string | null
+          wait_time_minutes: number | null
+        }
+        Insert: {
+          called_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          final_status?: string | null
+          id?: string
+          joined_at: string
+          name: string
+          party_id?: string | null
+          party_size: number
+          phone: string
+          queue_position: number
+          restaurant_id?: string | null
+          seated_at?: string | null
+          wait_time_minutes?: number | null
+        }
+        Update: {
+          called_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          final_status?: string | null
+          id?: string
+          joined_at?: string
+          name?: string
+          party_id?: string | null
+          party_size?: number
+          phone?: string
+          queue_position?: number
+          restaurant_id?: string | null
+          seated_at?: string | null
+          wait_time_minutes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queue_history_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "queue_history_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_queue_stats"
+            referencedColumns: ["restaurant_id"]
+          },
+          {
+            foreignKeyName: "queue_history_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurant_staff: {
         Row: {
           created_at: string | null
@@ -139,6 +219,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "restaurant_staff_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_queue_stats"
+            referencedColumns: ["restaurant_id"]
+          },
           {
             foreignKeyName: "restaurant_staff_restaurant_id_fkey"
             columns: ["restaurant_id"]
@@ -222,6 +309,17 @@ export type Database = {
       }
     }
     Views: {
+      restaurant_queue_stats: {
+        Row: {
+          avg_wait_time_today: number | null
+          max_wait_time_today: number | null
+          min_wait_time_today: number | null
+          restaurant_id: string | null
+          restaurant_name: string | null
+          total_served_today: number | null
+        }
+        Relationships: []
+      }
       v_avg_wait_by_position: {
         Row: {
           avg_wait_min: number | null
@@ -229,6 +327,13 @@ export type Database = {
           restaurant_id: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "parties_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_queue_stats"
+            referencedColumns: ["restaurant_id"]
+          },
           {
             foreignKeyName: "parties_restaurant_id_fkey"
             columns: ["restaurant_id"]
@@ -245,6 +350,13 @@ export type Database = {
           samples: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "parties_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_queue_stats"
+            referencedColumns: ["restaurant_id"]
+          },
           {
             foreignKeyName: "parties_restaurant_id_fkey"
             columns: ["restaurant_id"]
