@@ -1,686 +1,636 @@
-
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import QueueAnalytics from "@/components/QueueAnalytics";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  BarChart3, 
-  Clock, 
-  Users, 
-  TrendingUp, 
-  Settings, 
-  QrCode,
-  Download,
-  Share2,
-  Eye,
-  EyeOff,
-  Bell,
-  UserCog,
-  Calendar,
-  Target,
-  Star,
-  TrendingDown,
-  UserPlus,
-  UserMinus,
-  AlertTriangle
-} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { LogOut, Users, Clock, Settings, QrCode, Download } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-// Mock data para demonstração
-const mockAnalytics = {
-  averageWaitTime: 28,
-  averageAbandonmentTime: 15,
-  conversionRate: 85,
-  returningCustomers: 18,
-  queueClosed: false,
-  currentQueueSize: 12,
-  maxQueueSize: 30,
-  peakHours: [
-    { hour: '12:00', customers: 45 },
-    { hour: '13:00', customers: 62 },
-    { hour: '14:00', customers: 38 },
-    { hour: '19:00', customers: 58 },
-    { hour: '20:00', customers: 71 },
-    { hour: '21:00', customers: 42 }
-  ],
-  customerLoyalty: [
-    { frequency: '1 vez', count: 120 },
-    { frequency: '2-3 vezes', count: 85 },
-    { frequency: '4+ vezes', count: 43 }
-  ],
-  ratings: { 
-    average: 4.2, 
-    total: 87,
-    distribution: [
-      { stars: 5, count: 32 },
-      { stars: 4, count: 28 },
-      { stars: 3, count: 15 },
-      { stars: 2, count: 8 },
-      { stars: 1, count: 4 }
-    ]
-  },
-  comparison: {
-    thisWeek: { customers: 485, revenue: 12840, conversion: 85 },
-    lastWeek: { customers: 423, revenue: 11250, conversion: 78 }
-  },
-  weeklyTrend: [
-    { day: 'Seg', customers: 65, abandonment: 12 },
-    { day: 'Ter', customers: 78, abandonment: 15 },
-    { day: 'Qua', customers: 82, abandonment: 8 },
-    { day: 'Qui', customers: 94, abandonment: 18 },
-    { day: 'Sex', customers: 108, abandonment: 22 },
-    { day: 'Sáb', customers: 156, abandonment: 28 },
-    { day: 'Dom', customers: 142, abandonment: 24 }
-  ]
-};
+type Restaurant = Database['public']['Tables']['restaurants']['Row'];
+type Party = Database['public']['Tables']['parties']['Row'];
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'settings' | 'qr'>('dashboard');
-  
-  // Configurações do restaurante
-  const [maxQueueSize, setMaxQueueSize] = useState(30);
-  const [toleranceMinutes, setToleranceMinutes] = useState(10);
-  const [reinsertionPosition, setReinsertionPosition] = useState<'last' | 'first'>('last');
-  const [isPublicVisible, setIsPublicVisible] = useState(true);
-  const [operatingHours, setOperatingHours] = useState({ start: '10:00', end: '22:00' });
-  const [autoNotifications, setAutoNotifications] = useState(true);
-  const [manualTimeAdjustment, setManualTimeAdjustment] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [parties, setParties] = useState<Party[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [showQRDialog, setShowQRDialog] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
 
-  const checkInUrl = `${window.location.origin}/check-in`;
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
-  const handleGenerateQR = () => {
-    toast({
-      title: "QR Code gerado",
-      description: "O QR Code foi atualizado e já está disponível para a recepção",
-    });
-  };
+  useEffect(() => {
+    if (user) {
+      loadDashboardData();
+      const unsubscribe = setupRealtimeSubscription();
+      return () => {
+        unsubscribe?.();
+      };
+    }
+  }, [user]);
 
-  const handleDownloadQR = () => {
-    toast({
-      title: "QR Code baixado",
-      description: "O QR Code foi salvo em seus downloads",
-    });
-  };
-
-  const handleShareQR = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Entre na Lista de Espera',
-          text: 'Escaneie este QR Code para entrar na lista de espera do restaurante',
-          url: checkInUrl,
-        });
-      } catch (error) {
-        console.log('Error sharing:', error);
+  const checkAuth = async () => {
+    try {
+      const session = supabase.auth.session();
+      if (!session?.user) {
+        navigate("/login");
+        return;
       }
-    } else {
-      navigator.clipboard.writeText(checkInUrl);
+      setUser(session.user);
+    } catch (error) {
+      console.error('Erro ao verificar autenticação:', error);
+      navigate("/login");
+    }
+  };
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Buscar restaurante do usuário
+      const { data: restaurantData, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('owner_id', user.id)
+        .single();
+
+      if (restaurantError) {
+        if (restaurantError.code === 'PGRST116') {
+          // Nenhum restaurante encontrado
+          toast({
+            title: "Bem-vindo!",
+            description: "Vamos cadastrar seu restaurante.",
+          });
+          navigate("/register");
+          return;
+        }
+        throw restaurantError;
+      }
+
+      setRestaurant(restaurantData);
+
+      // Gerar URL do QR Code
+      const baseUrl = window.location.origin;
+      const qrUrl = `${baseUrl}/check-in/${restaurantData.id}`;
+      setQrCodeUrl(qrUrl);
+
+      // Buscar filas ativas do restaurante
+      const { data: partiesData, error: partiesError } = await supabase
+        .from('parties')
+        .select('*')
+        .eq('restaurant_id', restaurantData.id)
+        .in('status', ['waiting', 'next', 'ready'])
+        .order('queue_position', { ascending: true });
+
+      if (partiesError) {
+        console.error('Erro ao buscar filas:', partiesError);
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar fila de espera",
+          variant: "destructive"
+        });
+      } else {
+        setParties(partiesData || []);
+      }
+
+    } catch (error: any) {
+      console.error('Erro ao carregar dashboard:', error);
       toast({
-        title: "Link copiado",
-        description: "O link foi copiado para a área de transferência",
+        title: "Erro",
+        description: error.message || "Erro ao carregar dados do dashboard",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setupRealtimeSubscription = () => {
+    if (!restaurant?.id) return;
+
+    const subscription = supabase
+      .channel(`parties-${restaurant.id}`)
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'parties',
+          filter: `restaurant_id=eq.${restaurant.id}`
+        },
+        (payload) => {
+          console.log('Realtime update:', payload);
+          loadDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate("/");
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao fazer logout",
+        variant: "destructive"
       });
     }
   };
 
-  const handleSaveSettings = () => {
-    toast({
-      title: "Configurações salvas",
-      description: "Todas as configurações foram atualizadas com sucesso",
-    });
+  const handleCallNext = async (partyId: string) => {
+    try {
+      const { error } = await supabase
+        .from('parties')
+        .update({ 
+          status: 'ready',
+          notified_ready_at: new Date().toISOString()
+        })
+        .eq('id', partyId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Cliente chamado!",
+        description: "O cliente foi notificado que sua mesa está pronta."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
-  const chartConfig = {
-    customers: {
-      label: "Clientes",
-      color: "hsl(var(--primary))",
-    },
-    abandonment: {
-      label: "Desistências",
-      color: "hsl(var(--destructive))",
-    },
+  const handleMarkSeated = async (partyId: string) => {
+    try {
+      const { error } = await supabase
+        .from('parties')
+        .update({ 
+          status: 'seated',
+          seated_at: new Date().toISOString()
+        })
+        .eq('id', partyId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Cliente acomodado!",
+        description: "Cliente removido da fila e marcado como acomodado."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
-  const queueStatus = mockAnalytics.currentQueueSize >= maxQueueSize ? 'Fechada' : 'Aberta';
-  const queueStatusColor = mockAnalytics.currentQueueSize >= maxQueueSize ? 'destructive' : 'default';
+  const handleRemoveFromQueue = async (partyId: string) => {
+    try {
+      const { error } = await supabase
+        .from('parties')
+        .update({ 
+          status: 'removed',
+          removed_at: new Date().toISOString()
+        })
+        .eq('id', partyId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Cliente removido",
+        description: "Cliente foi removido da fila."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const toggleQueueStatus = async () => {
+    if (!restaurant) return;
+
+    try {
+      const newStatus = !restaurant.is_active;
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ is_active: newStatus })
+        .eq('id', restaurant.id);
+
+      if (error) throw error;
+
+      setRestaurant({ ...restaurant, is_active: newStatus });
+      
+      toast({
+        title: newStatus ? "Fila aberta!" : "Fila fechada!",
+        description: newStatus 
+          ? "Os clientes agora podem entrar na fila." 
+          : "A fila foi fechada para novos clientes."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getStatusBadge = (status: string | null) => {
+    const statusMap = {
+      waiting: { label: "Aguardando", variant: "default" as const },
+      next: { label: "Próximo", variant: "secondary" as const },
+      ready: { label: "Mesa Pronta", variant: "destructive" as const }
+    };
+    
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { 
+      label: status || 'Desconhecido', 
+      variant: "outline" as const 
+    };
+    
+    return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+  };
+
+  const getWaitTime = (joinedAt: string | null) => {
+    if (!joinedAt) return '0min';
+    const diff = Date.now() - new Date(joinedAt).getTime();
+    const minutes = Math.floor(diff / 60000);
+    return `${minutes}min`;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p>Carregando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!restaurant) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-6 text-center">
+            <p className="mb-4">Restaurante não encontrado</p>
+            <Button onClick={() => navigate("/register")}>
+              Cadastrar Restaurante
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Painel do Administrador</h1>
-              <p className="text-gray-600">O Cantinho Aconchegante - Dashboard</p>
+              <h1 className="text-2xl font-bold text-gray-900">{restaurant.name}</h1>
+              <p className="text-gray-600">Painel Administrativo</p>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/")}
-            >
-              Voltar ao App
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowQRDialog(true)}
+              >
+                <QrCode className="w-4 h-4 mr-2" />
+                QR Code
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate(`/admin/settings`)}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Configurações
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Navigation Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="dashboard" className="flex items-center space-x-2">
-              <BarChart3 className="w-4 h-4" />
-              <span>Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center space-x-2">
-              <Settings className="w-4 h-4" />
-              <span>Configurações</span>
-            </TabsTrigger>
-            <TabsTrigger value="qr" className="flex items-center space-x-2">
-              <QrCode className="w-4 h-4" />
-              <span>QR Code</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Dashboard Content */}
-          <TabsContent value="dashboard" className="space-y-6">
-            {/* Status da Fila */}
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Stats Cards */}
+          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Status da Fila</span>
-                  <Badge variant={queueStatusColor} className="flex items-center space-x-1">
-                    {queueStatus === 'Fechada' ? <AlertTriangle className="w-4 h-4" /> : <Users className="w-4 h-4" />}
-                    <span>{queueStatus}</span>
-                  </Badge>
-                </CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pessoas na Fila</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold">{mockAnalytics.currentQueueSize}/{maxQueueSize}</p>
-                    <p className="text-sm text-gray-500">Pessoas na fila</p>
-                  </div>
-                  {queueStatus === 'Fechada' && (
-                    <div className="text-right">
-                      <p className="text-sm text-red-600 font-medium">Fila lotada!</p>
-                      <p className="text-xs text-gray-500">Novos clientes serão notificados</p>
-                    </div>
-                  )}
-                </div>
+                <div className="text-2xl font-bold">{parties.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Total aguardando atendimento
+                </p>
               </CardContent>
             </Card>
 
-            {/* KPIs Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Tempo Médio de Espera</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{mockAnalytics.averageWaitTime} min</div>
-                  <p className="text-xs text-muted-foreground">+2 min vs. semana passada</p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Tempo até Desistência</CardTitle>
-                  <TrendingDown className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{mockAnalytics.averageAbandonmentTime} min</div>
-                  <p className="text-xs text-green-600">-1 min vs. semana passada</p>
-                </CardContent>
-              </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Tempo Médio</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {restaurant.avg_seat_time_minutes || 45}min
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Por mesa configurado
+                </p>
+              </CardContent>
+            </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{mockAnalytics.conversionRate}%</div>
-                  <p className="text-xs text-green-600">+5% vs. semana passada</p>
-                </CardContent>
-              </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Status</CardTitle>
+                <div className={`w-3 h-3 rounded-full ${
+                  restaurant.is_active ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {restaurant.is_active ? 'Aberto' : 'Fechado'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Estado atual da fila
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Clientes Retornando</CardTitle>
-                  <UserPlus className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{mockAnalytics.returningCustomers}</div>
-                  <p className="text-xs text-green-600">+3 vs. semana passada</p>
-                </CardContent>
-              </Card>
+
+          {/* Analytics Section */}
+          {restaurant && (
+            <div className="lg:col-span-3 mb-8">
+              <QueueAnalytics restaurantId={restaurant.id} />
             </div>
+          )}
 
-            {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Horários de Pico</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ChartContainer config={chartConfig}>
-                    <BarChart data={mockAnalytics.peakHours} width={400} height={300}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="hour" />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="customers" fill="var(--color-customers)" />
-                    </BarChart>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tendência Semanal</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ChartContainer config={chartConfig}>
-                    <LineChart data={mockAnalytics.weeklyTrend} width={400} height={300}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="day" />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line type="monotone" dataKey="customers" stroke="var(--color-customers)" strokeWidth={2} />
-                      <Line type="monotone" dataKey="abandonment" stroke="var(--color-abandonment)" strokeWidth={2} />
-                    </LineChart>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
-            </div>
 
-            {/* Additional Analytics */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Dados de Fidelização</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ChartContainer config={chartConfig}>
-                    <PieChart width={400} height={300}>
-                      <Pie
-                        data={mockAnalytics.customerLoyalty}
-                        cx={200}
-                        cy={150}
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="count"
-                        label={({ frequency, percent }) => `${frequency} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {mockAnalytics.customerLoyalty.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={`hsl(${index * 120}, 70%, 50%)`} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip />
-                    </PieChart>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Avaliações Recebidas</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold flex items-center space-x-2">
-                        <span>{mockAnalytics.ratings.average}</span>
-                        <Star className="w-5 h-5 text-yellow-500 fill-current" />
-                      </p>
-                      <p className="text-sm text-gray-500">({mockAnalytics.ratings.total} avaliações)</p>
-                    </div>
+          {/* Queue Management */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Fila Atual</CardTitle>
+                <CardDescription>
+                  Gerencie os clientes aguardando atendimento
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {parties.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="mx-auto h-12 w-12 mb-4 text-gray-300" />
+                    <p className="text-lg font-medium">Nenhum cliente na fila</p>
+                    <p className="text-sm mt-2">
+                      Os clientes que escanearem o QR Code aparecerão aqui
+                    </p>
                   </div>
-                  
-                  <div className="space-y-2">
-                    {mockAnalytics.ratings.distribution.map((rating) => (
-                      <div key={rating.stars} className="flex items-center space-x-2">
-                        <span className="text-sm w-8">{rating.stars}★</span>
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-yellow-500 h-2 rounded-full" 
-                            style={{ width: `${(rating.count / mockAnalytics.ratings.total) * 100}%` }}
-                          />
+                ) : (
+                  <div className="space-y-4">
+                    {parties.map((party, index) => (
+                      <div 
+                        key={party.id} 
+                        className="flex items-center justify-between p-4 border rounded-lg bg-white hover:shadow-sm transition-shadow"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="text-2xl font-bold text-gray-400">
+                            #{party.queue_position || index + 1}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{party.name}</h3>
+                            <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
+                              <span>{party.party_size} {party.party_size === 1 ? 'pessoa' : 'pessoas'}</span>
+                              <span>•</span>
+                              <span>{party.phone}</span>
+                              <span>•</span>
+                              <span>Esperando há {getWaitTime(party.joined_at)}</span>
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-sm w-8">{rating.count}</span>
+                        <div className="flex items-center space-x-3">
+                          {getStatusBadge(party.status)}
+                          <div className="flex space-x-2">
+                            {party.status === 'waiting' && (
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleCallNext(party.id)}
+                                className="bg-blue-600 hover:bg-blue-700"
+                              >
+                                Chamar
+                              </Button>
+                            )}
+                            {party.status === 'ready' && (
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleMarkSeated(party.id)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                Acomodar
+                              </Button>
+                            )}
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleRemoveFromQueue(party.id)}
+                            >
+                              Remover
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-            {/* Comparison */}
+          {/* Restaurant Info & Quick Actions */}
+          <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Comparação de Desempenho</CardTitle>
+                <CardTitle>Informações do Restaurante</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Nome</p>
+                  <p className="text-gray-900">{restaurant.name}</p>
+                </div>
+                {restaurant.description && (
                   <div>
-                    <h4 className="font-medium mb-2">Clientes</h4>
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Esta semana:</span>
-                        <span className="font-medium">{mockAnalytics.comparison.thisWeek.customers}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Semana passada:</span>
-                        <span className="font-medium">{mockAnalytics.comparison.lastWeek.customers}</span>
-                      </div>
-                      <div className="text-green-600 text-sm font-medium">
-                        +{((mockAnalytics.comparison.thisWeek.customers / mockAnalytics.comparison.lastWeek.customers - 1) * 100).toFixed(1)}%
-                      </div>
-                    </div>
+                    <p className="text-sm font-medium text-gray-500">Descrição</p>
+                    <p className="text-gray-900">{restaurant.description}</p>
                   </div>
-                  
+                )}
+                {restaurant.address && (
                   <div>
-                    <h4 className="font-medium mb-2">Receita</h4>
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Esta semana:</span>
-                        <span className="font-medium">R$ {mockAnalytics.comparison.thisWeek.revenue.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Semana passada:</span>
-                        <span className="font-medium">R$ {mockAnalytics.comparison.lastWeek.revenue.toLocaleString()}</span>
-                      </div>
-                      <div className="text-green-600 text-sm font-medium">
-                        +{((mockAnalytics.comparison.thisWeek.revenue / mockAnalytics.comparison.lastWeek.revenue - 1) * 100).toFixed(1)}%
-                      </div>
-                    </div>
+                    <p className="text-sm font-medium text-gray-500">Endereço</p>
+                    <p className="text-gray-900">{restaurant.address}</p>
                   </div>
-                  
+                )}
+                {restaurant.phone && (
                   <div>
-                    <h4 className="font-medium mb-2">Conversão</h4>
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Esta semana:</span>
-                        <span className="font-medium">{mockAnalytics.comparison.thisWeek.conversion}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Semana passada:</span>
-                        <span className="font-medium">{mockAnalytics.comparison.lastWeek.conversion}%</span>
-                      </div>
-                      <div className="text-green-600 text-sm font-medium">
-                        +{(mockAnalytics.comparison.thisWeek.conversion - mockAnalytics.comparison.lastWeek.conversion).toFixed(1)}%
-                      </div>
-                    </div>
+                    <p className="text-sm font-medium text-gray-500">Telefone</p>
+                    <p className="text-gray-900">{restaurant.phone}</p>
                   </div>
+                )}
+                {restaurant.email && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Email</p>
+                    <p className="text-gray-900">{restaurant.email}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Configurações da Fila</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Tempo médio por mesa</p>
+                  <p className="text-gray-900">{restaurant.avg_seat_time_minutes || 45} minutos</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Tolerância padrão</p>
+                  <p className="text-gray-900">{restaurant.default_tolerance_minutes || 15} minutos</p>
+                </div>
+                <div className="pt-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => navigate('/admin/settings')}
+                  >
+                    Editar Configurações
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* Settings Content */}
-          <TabsContent value="settings" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Settings className="w-5 h-5" />
-                    <span>Configurações da Fila</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Tamanho máximo da fila</label>
-                    <Input
-                      type="number"
-                      value={maxQueueSize}
-                      onChange={(e) => setMaxQueueSize(Number(e.target.value))}
-                      min="1"
-                      max="30"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Máximo permitido: 30 pessoas</p>
-                  </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Ações Rápidas</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button 
+                  className="w-full" 
+                  variant={restaurant.is_active ? "destructive" : "default"}
+                  onClick={toggleQueueStatus}
+                >
+                  {restaurant.is_active ? 'Fechar Fila' : 'Abrir Fila'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => setShowQRDialog(true)}
+                >
+                  <QrCode className="w-4 h-4 mr-2" />
+                  Visualizar QR Code
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate('/admin/history')}
+                >
+                  Ver Histórico
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Tempo de tolerância (minutos)</label>
-                    <Input
-                      type="number"
-                      value={toleranceMinutes}
-                      onChange={(e) => setToleranceMinutes(Number(e.target.value))}
-                      min="1"
-                      max="60"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Tempo para chegada após chamado da fila</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Reinserção após atraso</label>
-                    <Select value={reinsertionPosition} onValueChange={(value: 'last' | 'first') => setReinsertionPosition(value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="last">Última posição</SelectItem>
-                        <SelectItem value="first">Primeira posição</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-500 mt-1">Onde reinserir cliente que se atrasou</p>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-sm font-medium">Visibilidade pública</label>
-                      <p className="text-xs text-gray-500">Exibir restaurante no guia geral</p>
-                    </div>
-                    <Switch
-                      checked={isPublicVisible}
-                      onCheckedChange={setIsPublicVisible}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Clock className="w-5 h-5" />
-                    <span>Horário de Funcionamento</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Abertura</label>
-                      <Input
-                        type="time"
-                        value={operatingHours.start}
-                        onChange={(e) => setOperatingHours(prev => ({ ...prev, start: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Fechamento</label>
-                      <Input
-                        type="time"
-                        value={operatingHours.end}
-                        onChange={(e) => setOperatingHours(prev => ({ ...prev, end: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">Sistema de fila automático funcionará apenas nestes horários</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Bell className="w-5 h-5" />
-                    <span>Notificações</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-sm font-medium">Notificações automáticas</label>
-                      <p className="text-xs text-gray-500">Enviar alertas automáticos aos clientes</p>
-                    </div>
-                    <Switch
-                      checked={autoNotifications}
-                      onCheckedChange={setAutoNotifications}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-sm font-medium">Ajuste manual de tempo</label>
-                      <p className="text-xs text-gray-500">Permitir ajuste manual das previsões</p>
-                    </div>
-                    <Switch
-                      checked={manualTimeAdjustment}
-                      onCheckedChange={setManualTimeAdjustment}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <UserCog className="w-5 h-5" />
-                    <span>Gerenciamento de Acessos</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button variant="outline" className="w-full">
-                    <UserCog className="w-4 h-4 mr-2" />
-                    Gerenciar Colaboradores
-                  </Button>
-                  <Button variant="outline" className="w-full">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Configurar Permissões
-                  </Button>
-                  <p className="text-xs text-gray-500">Configure quem pode acessar cada funcionalidade</p>
-                </CardContent>
-              </Card>
+      {/* QR Code Dialog */}
+      <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>QR Code do Restaurante</DialogTitle>
+            <DialogDescription>
+              Os clientes podem escanear este código para entrar na fila
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4">
+            <div id="qr-code-canvas" className="bg-white p-4 rounded-lg">
+              {showQRDialog && (
+                <div className="w-64 h-64 bg-gray-100 flex items-center justify-center">
+                  <p className="text-gray-500">QR Code aqui</p>
+                </div>
+              )}
             </div>
-
-            <div className="flex justify-end">
-              <Button onClick={handleSaveSettings} className="px-8">
-                Salvar Configurações
+            <p className="text-sm text-center text-gray-600 break-all">
+              {qrCodeUrl}
+            </p>
+            <div className="flex gap-2 w-full">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => {
+                  toast({
+                    title: "Em desenvolvimento",
+                    description: "Função de download será implementada em breve"
+                  });
+                }}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Baixar
+              </Button>
+              <Button 
+                variant="default" 
+                className="flex-1"
+                onClick={() => {
+                  navigator.clipboard.writeText(qrCodeUrl);
+                  toast({
+                    title: "Link copiado!",
+                    description: "O link foi copiado para a área de transferência."
+                  });
+                }}
+              >
+                Copiar Link
               </Button>
             </div>
-          </TabsContent>
-
-          {/* QR Code Content */}
-          <TabsContent value="qr" className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <QrCode className="w-5 h-5" />
-                    <span>Gerar QR Code</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <div className="bg-white p-8 rounded-lg border-2 border-dashed border-gray-300 mb-4">
-                    <div className="w-64 h-64 mx-auto bg-gray-900 rounded-lg flex items-center justify-center">
-                      <div className="text-white text-center">
-                        <QrCode className="w-16 h-16 mx-auto mb-2" />
-                        <p className="text-sm">QR Code</p>
-                        <p className="text-xs opacity-75">para Check-in</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <Button onClick={handleGenerateQR} className="w-full">
-                      <QrCode className="w-4 h-4 mr-2" />
-                      Gerar Novo QR Code
-                    </Button>
-                    
-                    <Button onClick={handleDownloadQR} variant="outline" className="w-full">
-                      <Download className="w-4 h-4 mr-2" />
-                      Baixar QR Code
-                    </Button>
-                    
-                    <Button onClick={handleShareQR} variant="outline" className="w-full">
-                      <Share2 className="w-4 h-4 mr-2" />
-                      Compartilhar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Instruções de Uso</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-600 font-semibold text-sm">1</span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium">Gere o QR Code</h3>
-                      <p className="text-gray-600 text-sm">Clique em "Gerar Novo QR Code" para criar/atualizar o código</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-600 font-semibold text-sm">2</span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium">Imprima e posicione</h3>
-                      <p className="text-gray-600 text-sm">Baixe, imprima e coloque o QR Code na entrada do restaurante</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-600 font-semibold text-sm">3</span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium">Sincronização automática</h3>
-                      <p className="text-gray-600 text-sm">O QR Code da recepção será automaticamente atualizado</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-600 font-semibold text-sm">4</span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium">Compartilhe digitalmente</h3>
-                      <p className="text-gray-600 text-sm">Use a função compartilhar para enviar por WhatsApp, email, etc.</p>
-                    </div>
-                  </div>
-
-                  <div className="border-t pt-4 mt-6">
-                    <h4 className="font-medium mb-2">Link direto:</h4>
-                    <div className="bg-gray-50 p-3 rounded border">
-                      <code className="text-sm text-gray-700 break-all">{checkInUrl}</code>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

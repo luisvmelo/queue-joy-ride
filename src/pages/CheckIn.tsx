@@ -97,6 +97,11 @@ const CheckIn = () => {
     }
   };
 
+
+  // Calcular tempo estimado antes de entrar na fila
+    const estimatedTime = restaurant?.avg_seat_time_minutes 
+     ? (currentQueueSize + 1) * restaurant.avg_seat_time_minutes
+     : (currentQueueSize + 1) * 45;
   /* -------------------------------------- UI */
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">
@@ -184,6 +189,18 @@ const CheckIn = () => {
                 ))}
               </RadioGroup>
             </div>
+
+            {/* Estimativa de tempo */}
+            {currentQueueSize > 0 && (
+              <div className="bg-blue-50 rounded-lg p-4 space-y-2">
+                <p className="text-sm font-medium text-blue-900">
+                  ⏱️ Tempo estimado de espera: ~{estimatedTime} minutos
+                </p>
+                <p className="text-xs text-blue-700">
+                  {currentQueueSize} {currentQueueSize === 1 ? 'pessoa' : 'pessoas'} na frente
+                </p>
+              </div>
+            )}
 
             {/* botão */}
             <Button

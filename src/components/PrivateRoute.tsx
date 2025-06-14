@@ -1,21 +1,19 @@
-
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { User } from "@supabase/supabase-js";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
 }
 
 const PrivateRoute = ({ children }: PrivateRouteProps) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Verificar sessão atual
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    const checkUser = () => {
+      const session = supabase.auth.session();
       setUser(session?.user || null);
       setLoading(false);
     };
@@ -23,14 +21,16 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
     checkUser();
 
     // Escutar mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+    const authListener = supabase.auth.onAuthStateChange(
+      (_event, session) => {
         setUser(session?.user || null);
         setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      authListener?.unsubscribe();
+    };
   }, []);
 
   if (loading) {
@@ -45,7 +45,7 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;

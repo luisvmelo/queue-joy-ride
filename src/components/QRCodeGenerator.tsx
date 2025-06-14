@@ -15,7 +15,7 @@ const QRCodeGenerator = ({ restaurantId, restaurantName }: QRCodeGeneratorProps)
   
   // Se restaurantId for fornecido, gera URL específica do restaurante
   const targetUrl = restaurantId 
-    ? `${window.location.origin}/estabelecimento/${restaurantId}`
+    ? `${window.location.origin}/queue/${restaurantId}`
     : `${window.location.origin}/check-in`;
 
   const qrTitle = restaurantId && restaurantName
