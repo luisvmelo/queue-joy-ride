@@ -19,7 +19,7 @@ const Index = () => {
         
         {/* Cadastrar Empresa Button */}
         <div className="absolute top-6 right-6">
-          <Button onClick={() => navigate("/register")} variant="outline" size="sm" className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50">Área de Admin
+          <Button onClick={() => navigate("/login")} variant="outline" size="sm" className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50">Área de Admin
         </Button>
         </div>
       </div>
