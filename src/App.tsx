@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +14,7 @@ import ReceptionistDashboard from "./pages/ReceptionistDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import EmailConfirm from "./pages/EmailConfirm";
 import PrivateRoute from "./components/PrivateRoute";
 
 const App = () => (
@@ -25,6 +27,7 @@ const App = () => (
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/auth/confirm" element={<EmailConfirm />} />
         <Route path="/check-in" element={<CheckIn />} />
         <Route path="/check-in/:restaurantId" element={<CheckIn />} />
         <Route path="/status/:id" element={<Status />} />
