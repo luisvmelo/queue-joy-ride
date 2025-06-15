@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +61,45 @@ const Register = () => {
     setLoading(true);
 
     try {
+      // Verificar se o usuário já existe primeiro
+      const { data: existingUser } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password
+      });
+
+      if (existingUser.user) {
+        // Usuário já existe e senha está correta
+        // Verificar se já tem restaurante
+        const { data: restaurant } = await supabase
+          .from('restaurants')
+          .select('id')
+          .eq('owner_id', existingUser.user.id)
+          .single();
+
+        if (restaurant) {
+          toast({
+            title: "Conta já existe",
+            description: "Você já tem uma conta e um estabelecimento cadastrado. Redirecionando para o painel...",
+          });
+          navigate("/admin");
+          return;
+        } else {
+          toast({
+            title: "Conta existe mas sem estabelecimento",
+            description: "Sua conta existe mas não tem estabelecimento. Complete o cadastro...",
+          });
+          // Continuar com criação do restaurante
+          await createRestaurant(existingUser.user.id);
+          return;
+        }
+      }
+    } catch (authError: any) {
+      // Se deu erro no login, pode ser que o usuário não existe ou senha incorreta
+      // Vamos tentar criar a conta
+      console.log('Usuário não existe ou senha incorreta, tentando criar conta...');
+    }
+
+    try {
       // Salvar dados do formulário no localStorage para usar após confirmação
       localStorage.setItem('pendingRestaurantData', JSON.stringify({
         restaurantName: formData.restaurantName,
@@ -75,7 +113,7 @@ const Register = () => {
       }));
 
       // Cadastrar usuário no Supabase Auth
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -87,17 +125,29 @@ const Register = () => {
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        if (authError.message.includes('User already registered')) {
+          toast({
+            title: "Usuário já existe",
+            description: "Este email já está cadastrado. Tente fazer login ou use 'Esqueci minha senha'.",
+            variant: "destructive"
+          });
+          return;
+        }
+        throw authError;
+      }
 
-      toast({
-        title: "Cadastro realizado!",
-        description: "Confira seu e-mail para confirmar a conta e finalizar o cadastro do estabelecimento.",
-      });
+      if (data.user) {
+        toast({
+          title: "Cadastro realizado!",
+          description: "Confira seu e-mail para confirmar a conta e finalizar o cadastro do estabelecimento.",
+        });
 
-      // Redirecionar para página inicial
-      setTimeout(() => {
-        navigate("/");
-      }, 3000);
+        // Redirecionar para página inicial
+        setTimeout(() => {
+          navigate("/");
+        }, 3000);
+      }
 
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
@@ -108,6 +158,41 @@ const Register = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createRestaurant = async (userId: string) => {
+    try {
+      const { error: restaurantError } = await supabase
+        .from('restaurants')
+        .insert({
+          name: formData.restaurantName,
+          description: formData.description,
+          address: formData.address,
+          phone: formData.phone,
+          website: formData.website,
+          email: formData.email,
+          avg_seat_time_minutes: formData.avgSeatTimeMinutes,
+          default_tolerance_minutes: formData.defaultToleranceMinutes,
+          owner_id: userId,
+          is_active: true
+        });
+
+      if (restaurantError) throw restaurantError;
+
+      toast({
+        title: "Estabelecimento criado!",
+        description: "Seu estabelecimento foi cadastrado com sucesso!",
+      });
+
+      navigate("/admin");
+    } catch (error: any) {
+      console.error('Erro ao criar restaurante:', error);
+      toast({
+        title: "Erro ao criar estabelecimento",
+        description: error.message || "Ocorreu um erro ao criar o estabelecimento",
+        variant: "destructive"
+      });
     }
   };
 
@@ -303,8 +388,22 @@ const Register = () => {
                 disabled={loading}
                 className="flex-1 bg-black text-white hover:bg-gray-800"
               >
-                {loading ? "Cadastrando..." : "Criar Conta"}
+                {loading ? "Processando..." : "Criar Conta"}
               </Button>
+            </div>
+
+            {/* Link para login */}
+            <div className="text-center pt-4">
+              <p className="text-sm text-gray-600">
+                Já tem uma conta?{" "}
+                <button
+                  type="button"
+                  onClick={() => navigate("/login")}
+                  className="text-black font-semibold hover:underline"
+                >
+                  Faça login aqui
+                </button>
+              </p>
             </div>
           </form>
         </div>
