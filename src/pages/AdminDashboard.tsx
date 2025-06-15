@@ -1,5 +1,6 @@
 import QueueAnalytics from "@/components/QueueAnalytics";
 import { useEffect, useState } from "react";
+import EventManager from "@/components/EventManager";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -483,6 +484,15 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </div>
+          // Adicione esta seção após o Card "Configurações da Fila" 
+// (por volta da linha 485, depois do </Card> de Configurações da Fila)
+
+            <EventManager
+              restaurantId={restaurant.id}
+              currentEvent={restaurant.current_event}
+              eventType={restaurant.event_type}
+              onUpdate={loadDashboardData}
+            />
 
           {/* Restaurant Info & Quick Actions */}
           <div className="space-y-6">
