@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,6 +115,7 @@ const Login = () => {
     }
   };
 
+  // 🔧 FUNÇÃO HANDLESINGUP CORRIGIDA INTEGRADA
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -152,8 +152,16 @@ const Login = () => {
         defaultToleranceMinutes: signUpData.defaultToleranceMinutes
       }));
 
+      // 🔧 CORREÇÃO: URL de confirmação mais específica
+      const redirectURL = window.location.hostname === 'localhost' 
+        ? `${window.location.origin}/auth/confirm`
+        : `${window.location.origin}/auth/confirm`;
+
+      console.log('📧 Enviando cadastro para:', signUpData.email);
+      console.log('🔗 URL de redirecionamento:', redirectURL);
+
       // Cadastrar usuário no Supabase Auth
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error: authError } = await supabase.auth.signUp({
         email: signUpData.email,
         password: signUpData.password,
         options: {
@@ -161,19 +169,32 @@ const Login = () => {
             full_name: signUpData.fullName,
             user_type: 'owner'
           },
-          emailRedirectTo: `${window.location.origin}/auth/confirm`
+          emailRedirectTo: redirectURL
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('❌ Erro de auth:', authError);
+        throw authError;
+      }
 
-      toast({
-        title: "Cadastro realizado!",
-        description: "Confira seu e-mail para confirmar a conta e finalizar o cadastro do estabelecimento.",
-      });
+      console.log('✅ Resposta do cadastro:', data);
 
-      // Voltar para a tela de login
-      setIsSignUp(false);
+      // 🔧 VERIFICAR se precisa confirmar email
+      if (data.user && !data.user.email_confirmed_at) {
+        toast({
+          title: "📧 Cadastro realizado!",
+          description: `Enviamos um link de confirmação para ${signUpData.email}. Verifique sua caixa de entrada e spam.`,
+          duration: 10000 // 10 segundos
+        });
+      } else if (data.user && data.user.email_confirmed_at) {
+        toast({
+          title: "✅ Conta criada!",
+          description: "Sua conta foi criada e confirmada automaticamente.",
+        });
+      }
+
+      // Limpar formulário
       setSignUpData({
         fullName: "",
         email: "",
@@ -188,12 +209,30 @@ const Login = () => {
         defaultToleranceMinutes: 5
       });
 
+      // Voltar para login
+      setIsSignUp(false);
+
     } catch (error: any) {
-      console.error('Erro no cadastro:', error);
+      console.error('❌ Erro no cadastro:', error);
+      
+      // Mensagens de erro mais específicas
+      let errorMessage = "Ocorreu um erro inesperado";
+      
+      if (error.message?.includes('already registered')) {
+        errorMessage = "Este email já está cadastrado. Tente fazer login.";
+      } else if (error.message?.includes('invalid email')) {
+        errorMessage = "Email inválido. Verifique o formato.";
+      } else if (error.message?.includes('weak password')) {
+        errorMessage = "Senha muito fraca. Use pelo menos 6 caracteres.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: "Erro no cadastro",
-        description: error.message || "Ocorreu um erro inesperado",
-        variant: "destructive"
+        description: errorMessage,
+        variant: "destructive",
+        duration: 8000
       });
     } finally {
       setLoading(false);
