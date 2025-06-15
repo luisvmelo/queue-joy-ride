@@ -45,7 +45,7 @@ const AdminDashboard = () => {
 
   const checkAuth = async () => {
     try {
-      const session = supabase.auth.session();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
         navigate("/login");
         return;

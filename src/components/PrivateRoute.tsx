@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,8 +13,8 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
 
   useEffect(() => {
     // Verificar sessão atual
-    const checkUser = () => {
-      const session = supabase.auth.session();
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
       setLoading(false);
     };
@@ -21,7 +22,7 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
     checkUser();
 
     // Escutar mudanças de autenticação
-    const authListener = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user || null);
         setLoading(false);
@@ -29,7 +30,7 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
     );
 
     return () => {
-      authListener?.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
