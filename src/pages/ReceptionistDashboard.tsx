@@ -1,9 +1,17 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { QrCode, Users, Clock, CheckCircle, XCircle } from "lucide-react";
+import { 
+  QrCode, 
+  Users, 
+  Clock, 
+  CheckCircle, 
+  XCircle,
+  PhoneCall,
+  UserPlus,
+  AlertCircle
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -12,27 +20,56 @@ import CurrentQueue from "@/components/CurrentQueue";
 import QueueStatus from "@/components/QueueStatus";
 import ManualQueueEntry from "@/components/ManualQueueEntry";
 
+interface QueueParty {
+  party_id: string;
+  name: string;
+  phone: string;
+  party_size: number;
+  status: string;
+  queue_position: number;
+  joined_at: string;
+  notified_ready_at: string | null;
+  tolerance_minutes: number;
+}
+
+interface Restaurant {
+  id: string;
+  name: string;
+  is_active: boolean;
+  avg_seat_time_minutes: number | null;
+}
+
 const ReceptionistDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'qr' | 'queue' | 'status'>('status');
-  const [queueData, setQueueData] = useState<any[]>([]);
+  const [queueData, setQueueData] = useState<QueueParty[]>([]);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalInQueue: 0,
+    avgWaitTime: 0,
+    servedToday: 0,
+    nextInLine: null as QueueParty | null
+  });
 
-  const restaurantId = '550e8400-e29b-41d4-a716-446655440000'; // Default restaurant
+  // Por enquanto usar o ID fixo - depois mudar para pegar do usuário logado
+  const restaurantId = '550e8400-e29b-41d4-a716-446655440000';
 
   useEffect(() => {
+    fetchRestaurantData();
     fetchQueueData();
     
     // Set up real-time subscription
     const channel = supabase
-      .channel('queue-changes')
+      .channel('receptionist-queue-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'parties'
+          table: 'parties',
+          filter: `restaurant_id=eq.${restaurantId}`
         },
         () => {
           fetchQueueData();
@@ -45,14 +82,55 @@ const ReceptionistDashboard = () => {
     };
   }, []);
 
+  const fetchRestaurantData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', restaurantId)
+        .single();
+
+      if (error) throw error;
+      setRestaurant(data);
+    } catch (error) {
+      console.error('Error fetching restaurant:', error);
+    }
+  };
+
   const fetchQueueData = async () => {
     try {
+      // Buscar dados da fila usando RPC
       const { data, error } = await supabase.rpc('get_restaurant_queue', {
         restaurant_uuid: restaurantId
       });
 
       if (error) throw error;
-      setQueueData(data || []);
+      
+      const queueParties = (data || []) as QueueParty[];
+      setQueueData(queueParties);
+
+      // Calcular estatísticas
+      const waitingParties = queueParties.filter(p => p.status === 'waiting');
+      const readyParties = queueParties.filter(p => p.status === 'ready');
+      
+      // Buscar total atendido hoje
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { count: servedCount } = await supabase
+        .from('queue_history')
+        .select('*', { count: 'exact', head: true })
+        .eq('restaurant_id', restaurantId)
+        .eq('final_status', 'seated')
+        .gte('created_at', today.toISOString());
+
+      setStats({
+        totalInQueue: waitingParties.length + readyParties.length,
+        avgWaitTime: restaurant?.avg_seat_time_minutes || 45,
+        servedToday: servedCount || 0,
+        nextInLine: waitingParties.sort((a, b) => a.queue_position - b.queue_position)[0] || null
+      });
+
     } catch (error) {
       console.error('Error fetching queue:', error);
       toast({
@@ -65,10 +143,41 @@ const ReceptionistDashboard = () => {
     }
   };
 
+  const handleCallNext = async () => {
+    try {
+      const { data, error } = await supabase.rpc('call_next_in_queue', {
+        p_restaurant_id: restaurantId
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        toast({
+          title: "Próximo chamado!",
+          description: "O próximo cliente foi notificado",
+        });
+      } else {
+        toast({
+          title: "Fila vazia",
+          description: "Não há clientes aguardando na fila",
+        });
+      }
+
+      fetchQueueData();
+    } catch (error) {
+      console.error('Error calling next:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível chamar o próximo",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleConfirmArrival = async (partyId: string) => {
     try {
-      const { error } = await supabase.rpc('confirm_party_arrival', {
-        party_uuid: partyId
+      const { data, error } = await supabase.rpc('confirm_party_arrival', {
+        p_party_id: partyId
       });
 
       if (error) throw error;
@@ -77,6 +186,8 @@ const ReceptionistDashboard = () => {
         title: "Chegada confirmada",
         description: "Cliente foi acomodado com sucesso",
       });
+      
+      fetchQueueData();
     } catch (error) {
       console.error('Error confirming arrival:', error);
       toast({
@@ -89,8 +200,8 @@ const ReceptionistDashboard = () => {
 
   const handleMarkNoShow = async (partyId: string) => {
     try {
-      const { error } = await supabase.rpc('mark_party_no_show', {
-        party_uuid: partyId
+      const { data, error } = await supabase.rpc('handle_no_show', {
+        p_party_id: partyId
       });
 
       if (error) throw error;
@@ -99,6 +210,8 @@ const ReceptionistDashboard = () => {
         title: "Marcado como ausente",
         description: "Cliente foi marcado como não compareceu",
       });
+      
+      fetchQueueData();
     } catch (error) {
       console.error('Error marking no-show:', error);
       toast({
@@ -111,19 +224,17 @@ const ReceptionistDashboard = () => {
 
   const handleSendNotification = async (partyId: string, message: string) => {
     try {
-      // Find the party to get their contact info
       const party = queueData.find(p => p.party_id === partyId);
       if (!party) {
         throw new Error('Pessoa não encontrada na fila');
       }
 
-      // Here you would integrate with your notification service
-      // For now, we'll just show a toast to simulate the notification
+      // Aqui você integraria com serviço de notificação real
       console.log(`Sending notification to ${party.name} (${party.phone}): ${message}`);
       
       toast({
         title: "Notificação enviada",
-        description: `Mensagem enviada para ${party.name}: "${message}"`,
+        description: `Mensagem enviada para ${party.name}`,
       });
     } catch (error) {
       console.error('Error sending notification:', error);
@@ -137,13 +248,14 @@ const ReceptionistDashboard = () => {
 
   const handleSendBulkNotification = async (message: string) => {
     try {
-      // Here you would integrate with your notification service to send to all
-      // For now, we'll just show a toast to simulate the bulk notification
-      console.log(`Sending bulk notification to ${queueData.length} people: ${message}`);
+      const waitingParties = queueData.filter(p => p.status === 'waiting');
+      
+      // Aqui você integraria com serviço de notificação real
+      console.log(`Sending bulk notification to ${waitingParties.length} people: ${message}`);
       
       toast({
         title: "Notificação enviada",
-        description: `Mensagem enviada para todas as ${queueData.length} pessoas na fila: "${message}"`,
+        description: `Mensagem enviada para ${waitingParties.length} pessoas na fila`,
       });
     } catch (error) {
       console.error('Error sending bulk notification:', error);
@@ -159,7 +271,7 @@ const ReceptionistDashboard = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p className="text-gray-600">Carregando dados da fila...</p>
         </div>
       </div>
@@ -174,20 +286,83 @@ const ReceptionistDashboard = () => {
           <div className="flex justify-between items-center py-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Painel do Recepcionista</h1>
-              <p className="text-gray-600">O Cantinho Aconchegante</p>
+              <p className="text-gray-600">{restaurant?.name || 'Carregando...'}</p>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/")}
-            >
-              Voltar ao App
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="default"
+                onClick={handleCallNext}
+                disabled={stats.totalInQueue === 0}
+              >
+                <PhoneCall className="w-4 h-4 mr-2" />
+                Chamar Próximo
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/")}
+              >
+                Voltar ao App
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Stats Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total na Fila</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalInQueue}</div>
+              <p className="text-xs text-muted-foreground">pessoas aguardando</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tempo Médio</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.avgWaitTime}min</div>
+              <p className="text-xs text-muted-foreground">por atendimento</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Atendidos Hoje</CardTitle>
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.servedToday}</div>
+              <p className="text-xs text-muted-foreground">clientes atendidos</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Próximo da Fila</CardTitle>
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg font-bold truncate">
+                {stats.nextInLine?.name || 'Fila vazia'}
+              </div>
+              {stats.nextInLine && (
+                <p className="text-xs text-muted-foreground">
+                  {stats.nextInLine.party_size} {stats.nextInLine.party_size === 1 ? 'pessoa' : 'pessoas'}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Navigation Tabs */}
         <div className="flex space-x-1 bg-white rounded-lg p-1 shadow-sm border mb-6">
           <Button
             variant={activeTab === 'status' ? 'default' : 'ghost'}
@@ -215,21 +390,88 @@ const ReceptionistDashboard = () => {
           </Button>
         </div>
 
-        {/* Manual Queue Entry - Always visible at the top */}
+        {/* Manual Queue Entry - Always visible */}
         <div className="mb-6">
-          <ManualQueueEntry 
-            restaurantId={restaurantId}
-            onPartyAdded={fetchQueueData}
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <UserPlus className="w-5 h-5 mr-2" />
+                Adicionar à Fila Manualmente
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ManualQueueEntry 
+                restaurantId={restaurantId}
+                onPartyAdded={fetchQueueData}
+              />
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Content */}
+        {/* Content based on active tab */}
         {activeTab === 'status' && (
-          <QueueStatus
-            queueData={queueData}
-            onConfirmArrival={handleConfirmArrival}
-            onMarkNoShow={handleMarkNoShow}
-          />
+          <div className="space-y-4">
+            {/* Clientes prontos para serem atendidos */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Aguardando Confirmação de Chegada</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {queueData.filter(p => p.status === 'ready').length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">
+                    Nenhum cliente aguardando confirmação
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {queueData
+                      .filter(p => p.status === 'ready')
+                      .map(party => (
+                        <div key={party.party_id} className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50">
+                          <div>
+                            <h4 className="font-semibold">{party.name}</h4>
+                            <p className="text-sm text-gray-600">
+                              {party.party_size} {party.party_size === 1 ? 'pessoa' : 'pessoas'} • {party.phone}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleConfirmArrival(party.party_id)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Confirmar Chegada
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleMarkNoShow(party.party_id)}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Não Compareceu
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Próximos 5 da fila */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Próximos 5 da Fila</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <QueueStatus
+                  queueData={queueData.filter(p => p.status === 'waiting').slice(0, 5)}
+                  onConfirmArrival={handleConfirmArrival}
+                  onMarkNoShow={handleMarkNoShow}
+                />
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {activeTab === 'queue' && (
@@ -243,7 +485,14 @@ const ReceptionistDashboard = () => {
         )}
 
         {activeTab === 'qr' && (
-          <QRCodeGenerator />
+          <Card>
+            <CardHeader>
+              <CardTitle>QR Code do Restaurante</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <QRCodeGenerator restaurantId={restaurantId} />
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
