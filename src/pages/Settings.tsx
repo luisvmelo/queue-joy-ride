@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, Building, Users, Clock, Eye, Calendar, QrCode, Bell, Shield, BarChart, Palette, CreditCard } from "lucide-react";
+import { Settings as SettingsIcon, Building, Users, Clock, Eye, Calendar, QrCode, Bell, Shield, BarChart, Palette, CreditCard } from "lucide-react";
 import RestaurantSettings from "@/components/settings/RestaurantSettings";
 import QueueSettings from "@/components/settings/QueueSettings";
 import VisibilitySettings from "@/components/settings/VisibilitySettings";
@@ -40,7 +40,7 @@ const Settings = () => {
     { id: "notifications", label: "Notificações", icon: Bell, component: NotificationSettings },
     { id: "team", label: "Equipe", icon: Users, component: TeamSettings },
     { id: "reports", label: "Relatórios", icon: BarChart, component: ReportsSettings },
-    { id: "integrations", label: "Integrações", icon: Settings, component: IntegrationsSettings },
+    { id: "integrations", label: "Integrações", icon: SettingsIcon, component: IntegrationsSettings },
     { id: "branding", label: "Branding", icon: Palette, component: BrandingSettings },
     { id: "billing", label: "Faturamento", icon: CreditCard, component: BillingSettings },
     { id: "security", label: "Segurança", icon: Shield, component: SecuritySettings },
