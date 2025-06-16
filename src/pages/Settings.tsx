@@ -1,8 +1,9 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building, Clock, Eye, Calendar, QrCode, Bell, Palette, CreditCard } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Building, Clock, Eye, Calendar, QrCode, Bell, Palette, CreditCard, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import RestaurantSettings from "@/components/settings/RestaurantSettings";
 import QueueSettings from "@/components/settings/QueueSettings";
 import VisibilitySettings from "@/components/settings/VisibilitySettings";
@@ -18,6 +19,7 @@ import AccessDenied from "@/components/dashboard/AccessDenied";
 const Settings = () => {
   const { loading, user, restaurantId } = useDashboardAuth();
   const [activeTab, setActiveTab] = useState("restaurant");
+  const navigate = useNavigate();
 
   if (loading) {
     return <LoadingSpinner />;
@@ -42,6 +44,17 @@ const Settings = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/admin")}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar ao Dashboard
+            </Button>
+          </div>
           <h1 className="text-3xl font-bold text-gray-900">Configurações</h1>
           <p className="text-gray-600 mt-2">Gerencie todas as configurações do seu restaurante</p>
         </div>
