@@ -1,3 +1,4 @@
+
 import QueueAnalytics from "@/components/QueueAnalytics";
 import { useEffect, useState } from "react";
 import EventManager from "@/components/EventManager";
@@ -20,17 +21,11 @@ import {
 type Restaurant = Database['public']['Tables']['restaurants']['Row'];
 type Party = Database['public']['Tables']['parties']['Row'];
 
-// Interface estendida para incluir campos que podem não estar nos tipos
-interface ExtendedRestaurant extends Restaurant {
-  current_event?: string;
-  event_type?: string;
-}
-
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [restaurant, setRestaurant] = useState<ExtendedRestaurant | null>(null);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [parties, setParties] = useState<Party[]>([]);
   const [user, setUser] = useState<any>(null);
   const [showQRDialog, setShowQRDialog] = useState(false);

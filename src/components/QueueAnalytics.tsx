@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,34 +24,49 @@ const QueueAnalytics = ({ restaurantId }: QueueAnalyticsProps) => {
   useEffect(() => {
     if (!restaurantId) return;
     loadAnalytics();
-    const interval = setInterval(loadAnalytics, 60000); // Atualizar a cada minuto
+    const interval = setInterval(loadAnalytics, 60000); // Update every minute
     return () => clearInterval(interval);
   }, [restaurantId]);
 
   const loadAnalytics = async () => {
     try {
-      // Buscar estatísticas do dia
-      const { data: statsData } = await supabase
-        .from('restaurant_queue_stats')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .single();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayIso = today.toISOString();
 
-      // Buscar tamanho atual da fila
+      // Get current queue size
       const { count: queueSize } = await supabase
         .from('parties')
         .select('*', { count: 'exact', head: true })
         .eq('restaurant_id', restaurantId)
         .in('status', ['waiting', 'next', 'ready']);
 
-      // Buscar horários de pico do histórico
+      // Get today's served parties from queue_history
+      const { data: servedData } = await supabase
+        .from('queue_history')
+        .select('wait_time_minutes, joined_at')
+        .eq('restaurant_id', restaurantId)
+        .eq('final_status', 'seated')
+        .gte('created_at', todayIso);
+
+      // Calculate analytics from served data
+      const totalServed = servedData?.length || 0;
+      const waitTimes = servedData?.map(entry => entry.wait_time_minutes).filter(Boolean) || [];
+      
+      const avgWaitTime = waitTimes.length > 0 
+        ? Math.round(waitTimes.reduce((sum, time) => sum + time, 0) / waitTimes.length)
+        : 0;
+      const maxWaitTime = waitTimes.length > 0 ? Math.max(...waitTimes) : 0;
+      const minWaitTime = waitTimes.length > 0 ? Math.min(...waitTimes) : 0;
+
+      // Get peak hours from today's queue_history
       const { data: peakData } = await supabase
         .from('queue_history')
         .select('joined_at')
         .eq('restaurant_id', restaurantId)
-        .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+        .gte('created_at', todayIso);
 
-      // Processar horários de pico
+      // Process peak hours
       const hourCounts: { [key: number]: number } = {};
       if (peakData) {
         peakData.forEach(entry => {
@@ -67,15 +83,15 @@ const QueueAnalytics = ({ restaurantId }: QueueAnalyticsProps) => {
         .slice(0, 3);
 
       setAnalytics({
-        totalServedToday: statsData?.total_served_today || 0,
-        avgWaitTimeToday: statsData?.avg_wait_time_today || 0,
-        maxWaitTimeToday: statsData?.max_wait_time_today || 0,
-        minWaitTimeToday: statsData?.min_wait_time_today || 0,
+        totalServedToday: totalServed,
+        avgWaitTimeToday: avgWaitTime,
+        maxWaitTimeToday: maxWaitTime,
+        minWaitTimeToday: minWaitTime,
         currentQueueSize: queueSize || 0,
         peakHours
       });
     } catch (error) {
-      console.error('Erro ao carregar analytics:', error);
+      console.error('Error loading analytics:', error);
     } finally {
       setLoading(false);
     }

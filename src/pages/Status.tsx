@@ -109,7 +109,7 @@ const Status = () => {
         .from('parties')
         .select(`
           *,
-          restaurants (
+          restaurants!parties_restaurant_id_fkey (
             id,
             name,
             menu_url,
