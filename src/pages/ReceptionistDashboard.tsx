@@ -145,23 +145,39 @@ const ReceptionistDashboard = () => {
 
   const handleCallNext = async () => {
     try {
-      const { data, error } = await supabase.rpc('call_next_in_queue', {
-        p_restaurant_id: restaurantId
-      });
+      // Buscar o próximo da fila
+      const { data: nextParty, error: fetchError } = await supabase
+        .from('parties')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .eq('status', 'waiting')
+        .order('queue_position', { ascending: true })
+        .limit(1)
+        .single();
 
-      if (error) throw error;
-
-      if (data) {
-        toast({
-          title: "Próximo chamado!",
-          description: "O próximo cliente foi notificado",
-        });
-      } else {
+      if (fetchError || !nextParty) {
         toast({
           title: "Fila vazia",
           description: "Não há clientes aguardando na fila",
         });
+        return;
       }
+
+      // Atualizar status para ready
+      const { error: updateError } = await supabase
+        .from('parties')
+        .update({ 
+          status: 'ready',
+          notified_ready_at: new Date().toISOString()
+        })
+        .eq('id', nextParty.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Próximo chamado!",
+        description: "O próximo cliente foi notificado",
+      });
 
       fetchQueueData();
     } catch (error) {
@@ -177,7 +193,7 @@ const ReceptionistDashboard = () => {
   const handleConfirmArrival = async (partyId: string) => {
     try {
       const { data, error } = await supabase.rpc('confirm_party_arrival', {
-        p_party_id: partyId
+        party_uuid: partyId
       });
 
       if (error) throw error;
@@ -200,8 +216,8 @@ const ReceptionistDashboard = () => {
 
   const handleMarkNoShow = async (partyId: string) => {
     try {
-      const { data, error } = await supabase.rpc('handle_no_show', {
-        p_party_id: partyId
+      const { data, error } = await supabase.rpc('mark_party_no_show', {
+        party_uuid: partyId
       });
 
       if (error) throw error;
@@ -224,23 +240,16 @@ const ReceptionistDashboard = () => {
 
   const handleSendNotification = async (partyId: string, message: string) => {
     try {
-      const party = queueData.find(p => p.party_id === partyId);
-      if (!party) {
-        throw new Error('Pessoa não encontrada na fila');
-      }
-
-      // Aqui você integraria com serviço de notificação real
-      console.log(`Sending notification to ${party.name} (${party.phone}): ${message}`);
-      
+      // Implementar envio de notificação personalizada
       toast({
         title: "Notificação enviada",
-        description: `Mensagem enviada para ${party.name}`,
+        description: "Cliente foi notificado",
       });
     } catch (error) {
       console.error('Error sending notification:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível enviar a notificação",
+        description: "Não foi possível enviar notificação",
         variant: "destructive"
       });
     }
@@ -248,20 +257,16 @@ const ReceptionistDashboard = () => {
 
   const handleSendBulkNotification = async (message: string) => {
     try {
-      const waitingParties = queueData.filter(p => p.status === 'waiting');
-      
-      // Aqui você integraria com serviço de notificação real
-      console.log(`Sending bulk notification to ${waitingParties.length} people: ${message}`);
-      
+      // Implementar envio de notificação em massa
       toast({
-        title: "Notificação enviada",
-        description: `Mensagem enviada para ${waitingParties.length} pessoas na fila`,
+        title: "Notificações enviadas",
+        description: "Todos os clientes foram notificados",
       });
     } catch (error) {
-      console.error('Error sending bulk notification:', error);
+      console.error('Error sending bulk notifications:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível enviar a notificação",
+        description: "Não foi possível enviar notificações",
         variant: "destructive"
       });
     }
@@ -272,7 +277,7 @@ const ReceptionistDashboard = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando dados da fila...</p>
+          <p>Carregando dashboard...</p>
         </div>
       </div>
     );

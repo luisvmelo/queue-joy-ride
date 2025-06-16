@@ -60,10 +60,10 @@ const Status = () => {
   const [toleranceLeft, setToleranceLeft] = useState<number | null>(null);
 
   /* modais */
-  const [turnModal, setTurnModal]       = useState(false);
-  const [leaveModal, setLeaveModal]     = useState(false);
-  const [thanksOpen, setThanksOpen]     = useState(false);
-  const [noShowOpen, setNoShowOpen]     = useState(false);
+  const [turnModal, setTurnModal] = useState(false);
+  const [leaveModal, setLeaveModal] = useState(false);
+  const [thanksOpen, setThanksOpen] = useState(false);
+  const [noShowOpen, setNoShowOpen] = useState(false);
 
   /* refs para controle de notificações */
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -74,201 +74,130 @@ const Status = () => {
   /*  Setup inicial                                                           */
   /* ------------------------------------------------------------------------ */
   useEffect(() => {
-    // Criar elemento de áudio para notificações
-    audioRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmFgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
-
-    // Verificar permissão de notificações
-    if ("Notification" in window && Notification.permission === "granted") {
-      setNotificationsEnabled(true);
+    if (!id) {
+      navigate("/");
+      return;
     }
-  }, []);
+
+    fetchPartyData();
+
+    // Realtime
+    const channel = supabase
+      .channel(`party_${id}`)
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'parties', filter: `id=eq.${id}` },
+        (payload) => {
+          console.log('Party updated:', payload);
+          fetchPartyData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, navigate]);
 
   /* ------------------------------------------------------------------------ */
-  /*  Query inicial + assinatura realtime                                     */
+  /*  Fetch party data                                                        */
   /* ------------------------------------------------------------------------ */
-  useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+  const fetchPartyData = async () => {
+    if (!id) return;
 
-    const load = async () => {
-      if (!id) { navigate("/"); return; }
-
+    try {
       const { data, error } = await supabase
-        .from("parties")
+        .from('parties')
         .select(`
-          id, name, party_size,
-          queue_position, initial_position,
-          estimated_wait_minutes, tolerance_minutes,
-          joined_at, restaurant_id, status,
-          restaurant:restaurants ( id, name, menu_url, avg_seat_time_minutes )
+          *,
+          restaurants (
+            id,
+            name,
+            menu_url,
+            avg_seat_time_minutes
+          )
         `)
-        .eq("id", id)
+        .eq('id', id)
         .single();
 
-      if (error || !data) {
-        toast({
-          title: "Erro ao carregar dados",
-          description: error?.message ?? "Registro não encontrado",
-          variant: "destructive",
-        });
-        navigate("/");
-        return;
-      }
+      if (error) throw error;
 
-      setParty(data as unknown as Party);
-      
-      // Calcular tempo decorrido
-      if (data.joined_at) {
-        const elapsed = Math.floor((Date.now() - new Date(data.joined_at).getTime()) / 60000);
-        setElapsedMinutes(elapsed);
-      }
+      if (data) {
+        const partyData: Party = {
+          id: data.id,
+          name: data.name,
+          party_size: data.party_size,
+          queue_position: data.queue_position,
+          initial_position: data.initial_position,
+          estimated_wait_minutes: data.estimated_wait_minutes,
+          tolerance_minutes: data.tolerance_minutes,
+          joined_at: data.joined_at,
+          status: data.status,
+          restaurant: data.restaurants ? {
+            id: data.restaurants.id,
+            name: data.restaurants.name,
+            menu_url: data.restaurants.menu_url,
+            avg_seat_time_minutes: data.restaurants.avg_seat_time_minutes
+          } : null,
+          restaurant_id: data.restaurant_id
+        };
 
-      // Calcular tempo estimado melhorado
-      if (data.restaurant_id && data.queue_position && data.queue_position > 0) {
-        calculateBetterEstimatedTime(data.restaurant_id, data.queue_position);
-      }
+        setParty(partyData);
 
-      setLoading(false);
-
-      /* realtime para mudanças na própria party */
-      channel = supabase
-        .channel(`party_updates_${id}`)
-        .on(
-          "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "parties", filter: `id=eq.${id}` },
-          ({ new: next, old: prev }) => {
-            console.log("Party update:", { next, prev });
-            
-            // Verificar mudanças importantes
-            if (prev.queue_position !== next.queue_position || prev.status !== next.status) {
-              handleQueueUpdate(prev as Party, next as Party);
-            }
-            
-            setParty((current) => ({ ...(current as Party), ...(next as any) }));
-            
-            // Recalcular tempo se posição mudou
-            if (next.queue_position !== prev.queue_position && next.restaurant_id && next.queue_position > 0) {
-              calculateBetterEstimatedTime(next.restaurant_id, next.queue_position);
-            }
-          }
-        )
-        .subscribe();
-    };
-
-    load();
-    return () => { if (channel) supabase.removeChannel(channel); };
-  }, [id, navigate, toast]);
-
-  /* ------------------------------------------------------------------------ */
-  /*  Lidar com atualizações da fila e notificações                          */
-  /* ------------------------------------------------------------------------ */
-  const handleQueueUpdate = (oldParty: Party, newParty: Party) => {
-    // Notificar quando for o próximo (posição 1)
-    if (newParty.queue_position === 1 && oldParty.queue_position !== 1 && !hasNotifiedNext.current) {
-      hasNotifiedNext.current = true;
-      showNotification(
-        "Você é o próximo! 🎯",
-        `Prepare-se, você será chamado em breve no ${newParty.restaurant?.name}`,
-        true
-      );
-    }
-
-    // Notificar quando for chamado (status muda para ready ou posição 0)
-    if ((newParty.status === 'ready' || newParty.queue_position === 0) && 
-        oldParty.status !== 'ready' && !hasNotifiedReady.current) {
-      hasNotifiedReady.current = true;
-      showNotification(
-        "Sua vez chegou! 🎉",
-        `Sua mesa no ${newParty.restaurant?.name} está pronta!`,
-        true,
-        true // vibrar
-      );
-      setTurnModal(true);
-    }
-  };
-
-  /* ------------------------------------------------------------------------ */
-  /*  Sistema de notificações                                                */
-  /* ------------------------------------------------------------------------ */
-  const requestNotificationPermission = async () => {
-    if ("Notification" in window && Notification.permission === "default") {
-      const permission = await Notification.requestPermission();
-      setNotificationsEnabled(permission === "granted");
-      
-      toast({
-        title: permission === "granted" ? "Notificações ativadas!" : "Notificações negadas",
-        description: permission === "granted" 
-          ? "Você será notificado quando for sua vez" 
-          : "Você pode ativar nas configurações do navegador",
-      });
-    }
-  };
-
-  const showNotification = (title: string, body: string, playSound = false, vibrate = false) => {
-    // Toast sempre aparece
-    toast({
-      title,
-      description: body,
-      duration: 5000,
-    });
-
-    // Som
-    if (playSound && audioRef.current) {
-      audioRef.current.play().catch(e => console.log("Erro ao tocar som:", e));
-    }
-
-    // Vibração (se suportado)
-    if (vibrate && "vibrate" in navigator) {
-      navigator.vibrate([200, 100, 200]);
-    }
-
-    // Notificação do navegador
-    if (notificationsEnabled && document.hidden) {
-      new Notification(title, {
-        body,
-        icon: "/icon-192x192.png",
-        badge: "/icon-192x192.png",
-        tag: "queue-notification",
-        requireInteraction: true,
-      });
-    }
-  };
-
-  /* ------------------------------------------------------------------------ */
-  /*  Calcular tempo estimado baseado em dados históricos                     */
-  /* ------------------------------------------------------------------------ */
-  const calculateBetterEstimatedTime = async (restaurantId: string, currentPosition: number) => {
-    try {
-      const { data: avgData } = await supabase
-        .from('v_avg_wait_by_position')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .lte('initial_position', currentPosition)
-        .order('initial_position', { ascending: false });
-
-      if (avgData && avgData.length > 0) {
-        let totalMinutes = 0;
-        
-        for (let pos = 1; pos <= currentPosition; pos++) {
-          const posData = avgData.find(d => d.initial_position === pos);
-          if (posData && posData.avg_wait_min) {
-            totalMinutes += posData.avg_wait_min;
-          } else {
-            totalMinutes += party?.restaurant?.avg_seat_time_minutes || 45;
-          }
+        // Calcular ETA melhorado
+        if (partyData.queue_position && partyData.restaurant?.avg_seat_time_minutes) {
+          const eta = partyData.queue_position * partyData.restaurant.avg_seat_time_minutes;
+          setBetterEstimatedTime(eta);
         }
 
-        setBetterEstimatedTime(Math.round(totalMinutes));
-      } else {
-        const avgTime = party?.restaurant?.avg_seat_time_minutes || 45;
-        setBetterEstimatedTime(avgTime * currentPosition);
+        // Verificar se chegou a vez e mostrar modal
+        if (partyData.status === 'next' && !hasNotifiedNext.current) {
+          setTurnModal(true);
+          hasNotifiedNext.current = true;
+          playNotificationSound();
+        }
+
+        // Verificar se a mesa está pronta
+        if (partyData.status === 'ready' && !hasNotifiedReady.current) {
+          hasNotifiedReady.current = true;
+          playNotificationSound();
+          
+          toast({
+            title: "Mesa Pronta! 🎉",
+            description: "Sua mesa está pronta! Dirija-se ao restaurante.",
+          });
+        }
       }
-    } catch (error) {
-      console.error('Erro ao calcular tempo estimado:', error);
+
+    } catch (error: any) {
+      console.error('Error fetching party:', error);
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   /* ------------------------------------------------------------------------ */
-  /*  Atualizar tempo decorrido                                               */
+  /*  Notificações                                                            */
+  /* ------------------------------------------------------------------------ */
+  const playNotificationSound = () => {
+    if (notificationsEnabled && audioRef.current) {
+      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+    }
+  };
+
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      setNotificationsEnabled(permission === 'granted');
+    }
+  };
+
+  /* ------------------------------------------------------------------------ */
+  /*  Cronômetros – tempo decorrido                                           */
   /* ------------------------------------------------------------------------ */
   useEffect(() => {
     if (!party?.joined_at) return;
@@ -341,7 +270,7 @@ const Status = () => {
     if (!party) return;
     
     try {
-      await supabase.rpc('handle_no_show', { p_party_id: party.id });
+      await supabase.rpc('mark_party_no_show', { party_uuid: party.id });
       setNoShowOpen(true);
     } catch (error) {
       console.error('Erro ao processar no-show:', error);
@@ -360,191 +289,166 @@ const Status = () => {
   const progress = (() => {
     if (!party || party.initial_position == null) return 0;
     if (party.initial_position === 0) return 100;
-    const current = party.queue_position ?? party.initial_position;
-    const perc = ((party.initial_position - current) / party.initial_position) * 100;
-    return Math.min(Math.max(Math.round(perc), 0), 100);
+    const current = party.queue_position ?? 0;
+    const initial = party.initial_position;
+    return Math.max(0, Math.min(100, ((initial - current) / initial) * 100));
   })();
 
-  const displayEstimatedTime = betterEstimatedTime || party?.estimated_wait_minutes || 0;
-  const remainingTime = Math.max(0, displayEstimatedTime - elapsedMinutes);
+  const getStatusMessage = () => {
+    if (!party) return "";
+
+    switch (party.status) {
+      case 'waiting':
+        return party.queue_position === 1 
+          ? "Você é o próximo!" 
+          : `Posição ${party.queue_position} na fila`;
+      case 'next':
+        return "É a sua vez! 🎉";
+      case 'ready':
+        return "Mesa pronta! Dirija-se ao restaurante";
+      case 'seated':
+        return "Você já foi acomodado";
+      case 'removed':
+        return "Você saiu da fila";
+      case 'no_show':
+        return "Você foi marcado como ausente";
+      default:
+        return "Status desconhecido";
+    }
+  };
+
+  const getEstimatedTime = () => {
+    if (betterEstimatedTime !== null) return betterEstimatedTime;
+    if (party?.estimated_wait_minutes) return party.estimated_wait_minutes;
+    if (party?.queue_position && party.restaurant?.avg_seat_time_minutes) {
+      return party.queue_position * party.restaurant.avg_seat_time_minutes;
+    }
+    return null;
+  };
 
   /* ------------------------------------------------------------------------ */
-  /*  UI                                                                      */
+  /*  Render                                                                  */
   /* ------------------------------------------------------------------------ */
-  if (loading || !party) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen text-gray-600">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Carregando informações da fila...</p>
+          <p>Carregando status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!party) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Party não encontrado</p>
+          <Button onClick={() => navigate("/")}>Voltar ao início</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">
-      {/* header */}
-      <header className="py-4 text-center relative">
-        <h1 className="text-lg font-semibold">Status da Fila</h1>
-        {party.restaurant && (
-          <p className="text-sm text-gray-600">{party.restaurant.name}</p>
-        )}
-        
-        {/* Botão de notificações */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-4 top-4"
-          onClick={requestNotificationPermission}
-        >
-          {notificationsEnabled ? (
-            <Bell className="h-5 w-5 text-green-600" />
-          ) : (
-            <BellOff className="h-5 w-5 text-gray-400" />
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 p-4">
+      {/* Audio element para notificações */}
+      <audio ref={audioRef} preload="auto">
+        <source src="/notification.mp3" type="audio/mpeg" />
+      </audio>
+
+      <div className="max-w-md mx-auto">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold mb-2">{party.restaurant?.name}</h1>
+          <p className="text-gray-600">Olá, {party.name}!</p>
+        </div>
+
+        {/* Status Card */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <div className="text-center mb-4">
+            <h2 className="text-xl font-semibold mb-2">{getStatusMessage()}</h2>
+            <Progress value={progress} className="w-full mb-4" />
+          </div>
+
+          {/* Time Info */}
+          <div className="grid grid-cols-2 gap-4 text-center mb-4">
+            <div>
+              <p className="text-sm text-gray-600">Tempo decorrido</p>
+              <p className="text-lg font-semibold">{elapsedMinutes} min</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Tempo estimado</p>
+              <p className="text-lg font-semibold">
+                {getEstimatedTime() ? `~${getEstimatedTime()} min` : "Calculando..."}
+              </p>
+            </div>
+          </div>
+
+          {/* Tolerance Timer */}
+          {toleranceLeft !== null && toleranceLeft > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <div className="text-center">
+                <p className="text-sm text-red-600 mb-2">Tempo para comparecer:</p>
+                <TimeDisplay 
+                  timeInSeconds={toleranceLeft} 
+                  label="para comparecer"
+                  className="text-red-700 font-bold" 
+                />
+              </div>
+            </div>
           )}
-        </Button>
-      </header>
 
-      <main className="max-w-md mx-auto px-6 pb-12 space-y-6">
-        {/* Status removido ou atendido */}
-        {(party.status === 'seated' || party.status === 'removed') && (
-          <section className="bg-gray-100 p-6 rounded-2xl text-center">
-            <p className="text-gray-600">
-              {party.status === 'seated' 
-                ? 'Você já foi atendido. Obrigado!' 
-                : 'Você saiu da fila.'}
-            </p>
-            <Button 
-              className="mt-4"
-              onClick={() => navigate("/")}
+          {/* Actions */}
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              onClick={requestNotificationPermission}
+              className="w-full"
+              disabled={notificationsEnabled}
             >
-              Voltar ao início
+              {notificationsEnabled ? (
+                <>
+                  <Bell className="w-4 h-4 mr-2" />
+                  Notificações Ativadas
+                </>
+              ) : (
+                <>
+                  <BellOff className="w-4 h-4 mr-2" />
+                  Ativar Notificações
+                </>
+              )}
             </Button>
-          </section>
-        )}
 
-        {/* Status ativo */}
-        {party.status === 'waiting' || party.status === 'ready' ? (
-          <>
-            {/* Saudação */}
-            <section className="bg-white p-6 rounded-2xl shadow text-center space-y-1">
-              <h2 className="text-2xl font-bold">
-                Olá {party.name}! <span>👋</span>
-              </h2>
-              <p className="text-gray-600">
-                Grupo de {party.party_size} {party.party_size === 1 ? "pessoa" : "pessoas"}
-              </p>
-            </section>
-
-            {/* Card posição/progresso */}
-            <section className="bg-white p-6 rounded-2xl shadow space-y-6">
-              {/* posição */}
-              <div className="text-center space-y-1">
-                {party.status === 'ready' || party.queue_position === 0 ? (
-                  <>
-                    <div className="text-4xl mb-1">🎉</div>
-                    <p className="font-semibold text-lg">Sua mesa está pronta!</p>
-                    <p className="text-sm text-gray-600">Dirija-se ao balcão</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-5xl font-bold text-gray-900">
-                      #{party.queue_position ?? "–"}
-                    </div>
-                    <p className="text-gray-600">Sua posição na fila</p>
-                    {party.queue_position === 1 && (
-                      <p className="text-sm text-green-600 font-medium mt-2">
-                        Você é o próximo! 🎯
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* progresso */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Progresso</span>
-                  <span className="font-medium">{progress}%</span>
-                </div>
-                <Progress value={progress} className="h-3" />
-              </div>
-
-              {/* tempo / contagem */}
-              <div className="text-center space-y-4">
-                {party.status === 'ready' ? (
-                  <TimeDisplay
-                    timeInSeconds={toleranceLeft ?? 0}
-                    label="Tempo para chegar ao restaurante"
-                    isCountdown
-                  />
-                ) : (
-                  <>
-                    <div className="space-y-2">
-                      <TimeDisplay
-                        initialMinutes={remainingTime}
-                        label="Tempo estimado"
-                        isCountdown
-                      />
-                      <p className="text-xs text-gray-500">
-                        Aguardando há {elapsedMinutes} {elapsedMinutes === 1 ? 'minuto' : 'minutos'}
-                      </p>
-                    </div>
-                    {betterEstimatedTime && party.estimated_wait_minutes && 
-                     betterEstimatedTime !== party.estimated_wait_minutes && (
-                      <p className="text-xs text-blue-600">
-                        ⚡ Estimativa atualizada com base no histórico
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            </section>
-
-            {/* Info adicional */}
-            <section className="bg-blue-50 p-4 rounded-xl text-center">
-              <p className="text-sm text-blue-800">
-                📱 Esta página atualiza automaticamente
-              </p>
-              <p className="text-xs text-blue-600 mt-1">
-                {notificationsEnabled 
-                  ? "✅ Notificações ativadas - você será avisado"
-                  : "🔕 Ative as notificações para ser avisado"}
-              </p>
-            </section>
-
-            {/* botões */}
             {party.restaurant?.menu_url && (
               <Button
-                className="w-full h-12 bg-black text-white hover:bg-gray-800"
-                onClick={() => window.open(party.restaurant.menu_url!, "_blank")}
+                variant="outline"
+                onClick={() => window.open(party.restaurant!.menu_url!, '_blank')}
+                className="w-full"
               >
-                🍽️ Ver Cardápio
+                Ver Menu
               </Button>
             )}
 
             <Button
-              variant="outline"
-              className="w-full h-12 border-red-200 text-red-600 hover:bg-red-50"
+              variant="destructive"
               onClick={() => setLeaveModal(true)}
+              className="w-full"
             >
               Sair da Fila
             </Button>
-          </>
-        ) : null}
-      </main>
+          </div>
+        </div>
+      </div>
 
-      {/* Modais ---------------------------------------------------------------- */}
+      {/* Modals */}
       <TurnModal
         isOpen={turnModal}
         onConfirm={() => setTurnModal(false)}
-        onCancel={() => {
-          setTurnModal(false);
-          handleLeaveQueue();
-        }}
-        restaurantName={party.restaurant?.name ?? ""}
+        onCancel={() => setTurnModal(false)}
         toleranceTimeLeft={toleranceLeft ?? (party.tolerance_minutes ?? 10) * 60}
+        restaurantName={party.restaurant?.name ?? ""}
       />
 
       <LeaveQueueConfirmation

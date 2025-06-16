@@ -20,11 +20,17 @@ import {
 type Restaurant = Database['public']['Tables']['restaurants']['Row'];
 type Party = Database['public']['Tables']['parties']['Row'];
 
+// Interface estendida para incluir campos que podem não estar nos tipos
+interface ExtendedRestaurant extends Restaurant {
+  current_event?: string;
+  event_type?: string;
+}
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [restaurant, setRestaurant] = useState<ExtendedRestaurant | null>(null);
   const [parties, setParties] = useState<Party[]>([]);
   const [user, setUser] = useState<any>(null);
   const [showQRDialog, setShowQRDialog] = useState(false);
@@ -157,86 +163,12 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleCallNext = async (partyId: string) => {
-    try {
-      const { error } = await supabase
-        .from('parties')
-        .update({ 
-          status: 'ready',
-          notified_ready_at: new Date().toISOString()
-        })
-        .eq('id', partyId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Cliente chamado!",
-        description: "O cliente foi notificado que sua mesa está pronta."
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleMarkSeated = async (partyId: string) => {
-    try {
-      const { error } = await supabase
-        .from('parties')
-        .update({ 
-          status: 'seated',
-          seated_at: new Date().toISOString()
-        })
-        .eq('id', partyId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Cliente acomodado!",
-        description: "Cliente removido da fila e marcado como acomodado."
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleRemoveFromQueue = async (partyId: string) => {
-    try {
-      const { error } = await supabase
-        .from('parties')
-        .update({ 
-          status: 'removed',
-          removed_at: new Date().toISOString()
-        })
-        .eq('id', partyId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Cliente removido",
-        description: "Cliente foi removido da fila."
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
   const toggleQueueStatus = async () => {
     if (!restaurant) return;
-
+    
     try {
       const newStatus = !restaurant.is_active;
+      
       const { error } = await supabase
         .from('restaurants')
         .update({ is_active: newStatus })
@@ -349,71 +281,71 @@ const AdminDashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Stats Cards */}
-          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pessoas na Fila</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{parties.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  Total aguardando atendimento
-                </p>
-              </CardContent>
-            </Card>
+          {/* Left Column - Stats and Queue */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total na Fila
+                  </CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{parties.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    clientes aguardando
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Tempo Médio</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {restaurant.avg_seat_time_minutes || 45}min
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Por mesa configurado
-                </p>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Tempo Médio
+                  </CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {restaurant.avg_seat_time_minutes || 45}min
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    por atendimento
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Status</CardTitle>
-                <div className={`w-3 h-3 rounded-full ${
-                  restaurant.is_active ? 'bg-green-500' : 'bg-red-500'
-                }`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {restaurant.is_active ? 'Aberto' : 'Fechado'}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Estado atual da fila
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-
-          {/* Analytics Section */}
-          {restaurant && (
-            <div className="lg:col-span-3 mb-8">
-              <QueueAnalytics restaurantId={restaurant.id} />
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Status da Fila
+                  </CardTitle>
+                  <Badge variant={restaurant.is_active ? "default" : "secondary"}>
+                    {restaurant.is_active ? "Aberta" : "Fechada"}
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    size="sm" 
+                    variant={restaurant.is_active ? "destructive" : "default"}
+                    onClick={toggleQueueStatus}
+                    className="w-full"
+                  >
+                    {restaurant.is_active ? 'Fechar Fila' : 'Abrir Fila'}
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
-          )}
 
-
-
-          {/* Queue Management */}
-          <div className="lg:col-span-2">
+            {/* Current Queue */}
             <Card>
               <CardHeader>
                 <CardTitle>Fila Atual</CardTitle>
                 <CardDescription>
-                  Gerencie os clientes aguardando atendimento
+                  Clientes aguardando atendimento
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -441,41 +373,12 @@ const AdminDashboard = () => {
                             <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
                               <span>{party.party_size} {party.party_size === 1 ? 'pessoa' : 'pessoas'}</span>
                               <span>•</span>
-                              <span>{party.phone}</span>
-                              <span>•</span>
-                              <span>Esperando há {getWaitTime(party.joined_at)}</span>
+                              <span>{getWaitTime(party.joined_at)}</span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center gap-2">
                           {getStatusBadge(party.status)}
-                          <div className="flex space-x-2">
-                            {party.status === 'waiting' && (
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleCallNext(party.id)}
-                                className="bg-blue-600 hover:bg-blue-700"
-                              >
-                                Chamar
-                              </Button>
-                            )}
-                            {party.status === 'ready' && (
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleMarkSeated(party.id)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                Acomodar
-                              </Button>
-                            )}
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => handleRemoveFromQueue(party.id)}
-                            >
-                              Remover
-                            </Button>
-                          </div>
                         </div>
                       </div>
                     ))}
@@ -483,18 +386,20 @@ const AdminDashboard = () => {
                 )}
               </CardContent>
             </Card>
-          </div>
-          // Adicione esta seção após o Card "Configurações da Fila" 
-// (por volta da linha 485, depois do </Card> de Configurações da Fila)
 
+            {/* Queue Analytics */}
+            <QueueAnalytics restaurantId={restaurant.id} />
+
+            {/* Event Manager */}
             <EventManager
               restaurantId={restaurant.id}
               currentEvent={restaurant.current_event}
               eventType={restaurant.event_type}
               onUpdate={loadDashboardData}
             />
+          </div>
 
-          {/* Restaurant Info & Quick Actions */}
+          {/* Right Column - Restaurant Info & Quick Actions */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -534,38 +439,13 @@ const AdminDashboard = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Configurações da Fila</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Tempo médio por mesa</p>
-                  <p className="text-gray-900">{restaurant.avg_seat_time_minutes || 45} minutos</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Tolerância padrão</p>
-                  <p className="text-gray-900">{restaurant.default_tolerance_minutes || 15} minutos</p>
-                </div>
-                <div className="pt-2">
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => navigate('/admin/settings')}
-                  >
-                    Editar Configurações
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
                 <CardTitle>Ações Rápidas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button 
-                  className="w-full" 
                   variant={restaurant.is_active ? "destructive" : "default"}
                   onClick={toggleQueueStatus}
+                  className="w-full"
                 >
                   {restaurant.is_active ? 'Fechar Fila' : 'Abrir Fila'}
                 </Button>
