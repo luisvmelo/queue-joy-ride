@@ -46,6 +46,8 @@ const ReceptionistDashboard = () => {
   const [queueData, setQueueData] = useState<QueueParty[]>([]);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalInQueue: 0,
     avgWaitTime: 0,
@@ -53,36 +55,91 @@ const ReceptionistDashboard = () => {
     nextInLine: null as QueueParty | null
   });
 
-  // Por enquanto usar o ID fixo - depois mudar para pegar do usuário logado
-  const restaurantId = '550e8400-e29b-41d4-a716-446655440000';
-
   useEffect(() => {
-    fetchRestaurantData();
-    fetchQueueData();
-    
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('receptionist-queue-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'parties',
-          filter: `restaurant_id=eq.${restaurantId}`
-        },
-        () => {
-          fetchQueueData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    checkAuthentication();
   }, []);
 
+  useEffect(() => {
+    if (restaurantId && user) {
+      fetchRestaurantData();
+      fetchQueueData();
+      
+      // Set up real-time subscription
+      const channel = supabase
+        .channel('receptionist-queue-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'parties',
+            filter: `restaurant_id=eq.${restaurantId}`
+          },
+          () => {
+            fetchQueueData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [restaurantId, user]);
+
+  const checkAuthentication = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        toast({
+          title: "Acesso negado",
+          description: "Você precisa estar logado para acessar o dashboard",
+          variant: "destructive"
+        });
+        navigate("/login");
+        return;
+      }
+
+      setUser(session.user);
+
+      // Get user's restaurant using the new security function
+      const { data: userRestaurantId, error: restaurantError } = await supabase
+        .rpc('get_user_restaurant_id');
+
+      if (restaurantError) {
+        console.error('Error getting user restaurant:', restaurantError);
+        toast({
+          title: "Erro de acesso",
+          description: "Não foi possível encontrar seu restaurante",
+          variant: "destructive"
+        });
+        navigate("/");
+        return;
+      }
+
+      if (!userRestaurantId) {
+        toast({
+          title: "Acesso negado",
+          description: "Você não tem permissão para acessar este dashboard",
+          variant: "destructive"
+        });
+        navigate("/");
+        return;
+      }
+
+      setRestaurantId(userRestaurantId);
+    } catch (error) {
+      console.error('Authentication error:', error);
+      navigate("/login");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchRestaurantData = async () => {
+    if (!restaurantId) return;
+
     try {
       const { data, error } = await supabase
         .from('restaurants')
@@ -94,10 +151,17 @@ const ReceptionistDashboard = () => {
       setRestaurant(data);
     } catch (error) {
       console.error('Error fetching restaurant:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar dados do restaurante",
+        variant: "destructive"
+      });
     }
   };
 
   const fetchQueueData = async () => {
+    if (!restaurantId) return;
+
     try {
       // Buscar dados da fila usando RPC
       const { data, error } = await supabase.rpc('get_restaurant_queue', {
@@ -138,12 +202,12 @@ const ReceptionistDashboard = () => {
         description: "Não foi possível carregar os dados da fila",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleCallNext = async () => {
+    if (!restaurantId) return;
+
     try {
       // Buscar o próximo da fila
       const { data: nextParty, error: fetchError } = await supabase
@@ -272,12 +336,32 @@ const ReceptionistDashboard = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate("/");
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p>Carregando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!restaurantId || !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Acesso negado</p>
+          <Button onClick={() => navigate("/login")}>Fazer Login</Button>
         </div>
       </div>
     );
@@ -307,6 +391,12 @@ const ReceptionistDashboard = () => {
                 onClick={() => navigate("/")}
               >
                 Voltar ao App
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleSignOut}
+              >
+                Sair
               </Button>
             </div>
           </div>
@@ -489,7 +579,7 @@ const ReceptionistDashboard = () => {
           />
         )}
 
-        {activeTab === 'qr' && (
+        {activeTab === 'qr' && restaurantId && (
           <Card>
             <CardHeader>
               <CardTitle>QR Code do Restaurante</CardTitle>

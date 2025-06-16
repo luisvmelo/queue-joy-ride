@@ -1,238 +1,65 @@
+
 import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2, Lock } from "lucide-react";
+import { cleanupAuthState } from "@/utils/authCleanup";
 
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-  
-  const [loginData, setLoginData] = useState({
-    email: "",
-    password: ""
-  });
-
-  const [signUpData, setSignUpData] = useState({
-    // Dados do responsável
-    fullName: "",
+  const [formData, setFormData] = useState({
     email: "",
     password: "",
-    confirmPassword: "",
-    
-    // Dados do estabelecimento
-    restaurantName: "",
-    description: "",
-    address: "",
-    phone: "",
-    website: "",
-    avgSeatTimeMinutes: 45,
-    defaultToleranceMinutes: 5
   });
 
-  const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setLoginData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSignUpChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setSignUpData(prev => ({
-      ...prev,
-      [name]: name.includes('Minutes') ? parseInt(value) || 0 : value
-    }));
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Clean up existing auth state
+      cleanupAuthState();
+      
+      // Attempt global sign out first
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Continue even if this fails
+        console.log('Global sign out failed, continuing...');
+      }
+
+      // Sign in with email/password
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginData.email,
-        password: loginData.password
+        email: formData.email,
+        password: formData.password,
       });
 
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          toast({
-            title: "Erro no login",
-            description: "Email ou senha incorretos, ou conta não confirmada",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Erro no login",
-            description: error.message,
-            variant: "destructive"
-          });
-        }
-        return;
-      }
+      if (error) throw error;
 
       if (data.user) {
-        // Verificar se o usuário tem um restaurante
-        const { data: restaurant, error: restaurantError } = await supabase
-          .from('restaurants')
-          .select('id')
-          .eq('owner_id', data.user.id)
-          .single();
-
-        if (restaurantError || !restaurant) {
-          toast({
-            title: "Conta não encontrada",
-            description: "Você não tem um estabelecimento cadastrado",
-            variant: "destructive"
-          });
-          await supabase.auth.signOut();
-          return;
-        }
-
         toast({
-          title: "Login realizado!",
-          description: "Redirecionando para o painel administrativo...",
+          title: "Login realizado com sucesso!",
+          description: "Redirecionando...",
         });
-
-        navigate("/admin");
+        
+        // Force page reload for clean state
+        setTimeout(() => {
+          window.location.href = '/admin';
+        }, 1000);
       }
     } catch (error: any) {
-      console.error('Erro no login:', error);
+      console.error("Erro no login:", error);
       toast({
         title: "Erro no login",
-        description: error.message || "Ocorreu um erro inesperado",
+        description: error.message || "Verifique suas credenciais e tente novamente",
         variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🔧 FUNÇÃO HANDLESINGUP CORRIGIDA INTEGRADA
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (signUpData.password !== signUpData.confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (signUpData.password.length < 6) {
-      toast({
-        title: "Erro", 
-        description: "A senha deve ter pelo menos 6 caracteres",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Salvar dados do formulário no localStorage para usar após confirmação
-      localStorage.setItem('pendingRestaurantData', JSON.stringify({
-        restaurantName: signUpData.restaurantName,
-        description: signUpData.description,
-        address: signUpData.address,
-        phone: signUpData.phone,
-        website: signUpData.website,
-        email: signUpData.email,
-        avgSeatTimeMinutes: signUpData.avgSeatTimeMinutes,
-        defaultToleranceMinutes: signUpData.defaultToleranceMinutes
-      }));
-
-      // 🔧 CORREÇÃO: URL de confirmação mais específica
-      const redirectURL = window.location.hostname === 'localhost' 
-        ? `${window.location.origin}/auth/confirm`
-        : `${window.location.origin}/auth/confirm`;
-
-      console.log('📧 Enviando cadastro para:', signUpData.email);
-      console.log('🔗 URL de redirecionamento:', redirectURL);
-
-      // Cadastrar usuário no Supabase Auth
-      const { data, error: authError } = await supabase.auth.signUp({
-        email: signUpData.email,
-        password: signUpData.password,
-        options: {
-          data: {
-            full_name: signUpData.fullName,
-            user_type: 'owner'
-          },
-          emailRedirectTo: redirectURL
-        }
-      });
-
-      if (authError) {
-        console.error('❌ Erro de auth:', authError);
-        throw authError;
-      }
-
-      console.log('✅ Resposta do cadastro:', data);
-
-      // 🔧 VERIFICAR se precisa confirmar email
-      if (data.user && !data.user.email_confirmed_at) {
-        toast({
-          title: "📧 Cadastro realizado!",
-          description: `Enviamos um link de confirmação para ${signUpData.email}. Verifique sua caixa de entrada e spam.`,
-          duration: 10000 // 10 segundos
-        });
-      } else if (data.user && data.user.email_confirmed_at) {
-        toast({
-          title: "✅ Conta criada!",
-          description: "Sua conta foi criada e confirmada automaticamente.",
-        });
-      }
-
-      // Limpar formulário
-      setSignUpData({
-        fullName: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-        restaurantName: "",
-        description: "",
-        address: "",
-        phone: "",
-        website: "",
-        avgSeatTimeMinutes: 45,
-        defaultToleranceMinutes: 5
-      });
-
-      // Voltar para login
-      setIsSignUp(false);
-
-    } catch (error: any) {
-      console.error('❌ Erro no cadastro:', error);
-      
-      // Mensagens de erro mais específicas
-      let errorMessage = "Ocorreu um erro inesperado";
-      
-      if (error.message?.includes('already registered')) {
-        errorMessage = "Este email já está cadastrado. Tente fazer login.";
-      } else if (error.message?.includes('invalid email')) {
-        errorMessage = "Email inválido. Verifique o formato.";
-      } else if (error.message?.includes('weak password')) {
-        errorMessage = "Senha muito fraca. Use pelo menos 6 caracteres.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      toast({
-        title: "Erro no cadastro",
-        description: errorMessage,
-        variant: "destructive",
-        duration: 8000
       });
     } finally {
       setLoading(false);
@@ -240,277 +67,79 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex flex-col">
-      {/* Header */}
-      <div className="text-center pt-8 pb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          {isSignUp ? "Cadastrar Estabelecimento" : "Login Empresa"}
-        </h1>
-        <p className="text-gray-600">
-          {isSignUp 
-            ? "Junte-se à plataforma Line-up e modernize seu atendimento" 
-            : "Acesse o painel administrativo do seu estabelecimento"
-          }
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center p-4">
+      <Card className="max-w-md w-full">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl flex items-center justify-center gap-2">
+            <Lock className="w-6 h-6" />
+            Login
+          </CardTitle>
+          <CardDescription>
+            Entre com suas credenciais para acessar o painel administrativo
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+                disabled={loading}
+              />
+            </div>
 
-      {/* Form */}
-      <div className="flex-1 flex justify-center px-6 pb-12">
-        <div className="max-w-2xl w-full">
-          {!isSignUp ? (
-            // Login Form
-            <form onSubmit={handleLogin} className="space-y-6 bg-white p-8 rounded-lg shadow-lg max-w-md mx-auto">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    value={loginData.email}
-                    onChange={handleLoginChange}
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    value={loginData.password}
-                    onChange={handleLoginChange}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
+            <div>
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Sua senha"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+                disabled={loading}
+              />
+            </div>
 
-              <div className="space-y-4">
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-black text-white hover:bg-gray-800"
-                >
-                  {loading ? "Entrando..." : "Entrar"}
-                </Button>
-                
-                <div className="text-center">
-                  <p className="text-sm text-gray-600">
-                    Não tem conta?{" "}
-                    <button
-                      type="button"
-                      onClick={() => setIsSignUp(true)}
-                      className="text-black font-semibold hover:underline"
-                    >
-                      Cadastre-se aqui
-                    </button>
-                  </p>
-                </div>
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate("/")}
-                  className="w-full"
-                >
-                  Voltar
-                </Button>
-              </div>
-            </form>
-          ) : (
-            // Sign Up Form
-            <form onSubmit={handleSignUp} className="space-y-6 bg-white p-8 rounded-lg shadow-lg">
-              
-              {/* Dados do Responsável */}
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-gray-900 border-b pb-2">Dados do Responsável</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="fullName">Nome Completo *</Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      type="text"
-                      required
-                      value={signUpData.fullName}
-                      onChange={handleSignUpChange}
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      value={signUpData.email}
-                      onChange={handleSignUpChange}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Fazendo login...
+                </>
+              ) : (
+                "Fazer Login"
+              )}
+            </Button>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="password">Senha *</Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      required
-                      value={signUpData.password}
-                      onChange={handleSignUpChange}
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="confirmPassword">Confirmar Senha *</Label>
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      required
-                      value={signUpData.confirmPassword}
-                      onChange={handleSignUpChange}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Dados do Estabelecimento */}
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-gray-900 border-b pb-2">Dados do Estabelecimento</h3>
-                
-                <div>
-                  <Label htmlFor="restaurantName">Nome do Estabelecimento *</Label>
-                  <Input
-                    id="restaurantName"
-                    name="restaurantName"
-                    type="text"
-                    required
-                    value={signUpData.restaurantName}
-                    onChange={handleSignUpChange}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={signUpData.description}
-                    onChange={handleSignUpChange}
-                    className="mt-1"
-                    rows={3}
-                    placeholder="Descreva seu estabelecimento..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      value={signUpData.phone}
-                      onChange={handleSignUpChange}
-                      className="mt-1"
-                      placeholder="(11) 99999-9999"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="website">Website</Label>
-                    <Input
-                      id="website"
-                      name="website"
-                      type="url"
-                      value={signUpData.website}
-                      onChange={handleSignUpChange}
-                      className="mt-1"
-                      placeholder="https://seusite.com"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="address">Endereço</Label>
-                  <Input
-                    id="address"
-                    name="address"
-                    type="text"
-                    value={signUpData.address}
-                    onChange={handleSignUpChange}
-                    className="mt-1"
-                    placeholder="Rua, número, bairro, cidade - CEP"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="avgSeatTimeMinutes">Tempo médio por mesa (minutos)</Label>
-                    <Input
-                      id="avgSeatTimeMinutes"
-                      name="avgSeatTimeMinutes"
-                      type="number"
-                      min="15"
-                      max="300"
-                      value={signUpData.avgSeatTimeMinutes}
-                      onChange={handleSignUpChange}
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="defaultToleranceMinutes">Tolerância padrão (minutos)</Label>
-                    <Input
-                      id="defaultToleranceMinutes"
-                      name="defaultToleranceMinutes"
-                      type="number"
-                      min="1"
-                      max="30"
-                      value={signUpData.defaultToleranceMinutes}
-                      onChange={handleSignUpChange}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex flex-col gap-4 pt-6">
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-black text-white hover:bg-gray-800"
-                >
-                  {loading ? "Cadastrando..." : "Criar Conta"}
-                </Button>
-                
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() => setIsSignUp(false)}
-                    className="text-sm text-gray-600 hover:underline"
-                  >
-                    Já tem conta? Faça login
-                  </button>
-                </div>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-600">
+                Não tem uma conta?{" "}
+                <Link to="/register" className="text-blue-600 hover:underline">
+                  Cadastre-se aqui
+                </Link>
+              </p>
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => navigate("/")}
+                disabled={loading}
+              >
+                Voltar ao início
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

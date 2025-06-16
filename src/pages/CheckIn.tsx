@@ -40,11 +40,12 @@ const CheckIn = () => {
     try {
       setLoadingRestaurant(true);
       
-      // Buscar informações do restaurante
+      // Buscar informações do restaurante (only active restaurants are visible due to RLS)
       const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
         .select('*')
         .eq('id', restaurantId)
+        .eq('is_active', true)
         .single();
 
       console.log("Restaurant query result:", { restaurantData, restaurantError });
@@ -53,7 +54,7 @@ const CheckIn = () => {
         if (restaurantError.code === 'PGRST116') {
           toast({
             title: "Restaurante não encontrado",
-            description: `Não foi possível encontrar o restaurante com ID: ${restaurantId}`,
+            description: `Este restaurante não está ativo ou não existe`,
             variant: "destructive"
           });
         } else {
@@ -77,19 +78,9 @@ const CheckIn = () => {
         return;
       }
 
-      if (!restaurantData.is_active) {
-        toast({
-          title: "Fila fechada",
-          description: `${restaurantData.name} não está aceitando novos clientes no momento`,
-          variant: "destructive"
-        });
-        navigate("/");
-        return;
-      }
-
       setRestaurant(restaurantData);
 
-      // Contar tamanho atual da fila
+      // Contar tamanho atual da fila - only visible parties due to RLS
       const { count, error: countError } = await supabase
         .from('parties')
         .select('*', { count: 'exact', head: true })
@@ -141,7 +132,7 @@ const CheckIn = () => {
         throw new Error("Por favor, insira um telefone válido");
       }
 
-      // Verificar se o cliente já está na fila
+      // Verificar se o cliente já está na fila (check by phone and restaurant)
       const { data: existingEntry, error: checkError } = await supabase
         .from('parties')
         .select('*')
@@ -227,7 +218,7 @@ const CheckIn = () => {
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="p-6 text-center">
-            <p className="text-red-600 mb-4">Restaurante não encontrado</p>
+            <p className="text-red-600 mb-4">Restaurante não encontrado ou não está ativo</p>
             <Button onClick={() => navigate("/")}>
               Voltar ao início
             </Button>

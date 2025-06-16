@@ -81,11 +81,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "parties_restaurant_id_fkey"
+            foreignKeyName: "fk_parties_restaurant"
             columns: ["restaurant_id"]
             isOneToOne: false
-            referencedRelation: "restaurant_queue_stats"
-            referencedColumns: ["restaurant_id"]
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "parties_restaurant_id_fkey"
@@ -174,18 +174,18 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_queue_history_restaurant"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "queue_history_party_id_fkey"
             columns: ["party_id"]
             isOneToOne: false
             referencedRelation: "parties"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "queue_history_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurant_queue_stats"
-            referencedColumns: ["restaurant_id"]
           },
           {
             foreignKeyName: "queue_history_restaurant_id_fkey"
@@ -220,11 +220,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "restaurant_staff_restaurant_id_fkey"
+            foreignKeyName: "fk_staff_restaurant"
             columns: ["restaurant_id"]
             isOneToOne: false
-            referencedRelation: "restaurant_queue_stats"
-            referencedColumns: ["restaurant_id"]
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "restaurant_staff_restaurant_id_fkey"
@@ -246,12 +246,18 @@ export type Database = {
         Row: {
           address: string | null
           avg_seat_time_minutes: number | null
+          category: string | null
           created_at: string | null
+          current_event: string | null
           default_tolerance_minutes: number
           description: string | null
           email: string | null
+          event_type: string | null
           id: string
+          image_url: string | null
           is_active: boolean | null
+          latitude: number | null
+          longitude: number | null
           menu_url: string | null
           name: string
           opening_hours: Json | null
@@ -264,12 +270,18 @@ export type Database = {
         Insert: {
           address?: string | null
           avg_seat_time_minutes?: number | null
+          category?: string | null
           created_at?: string | null
+          current_event?: string | null
           default_tolerance_minutes?: number
           description?: string | null
           email?: string | null
+          event_type?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
           menu_url?: string | null
           name: string
           opening_hours?: Json | null
@@ -282,12 +294,18 @@ export type Database = {
         Update: {
           address?: string | null
           avg_seat_time_minutes?: number | null
+          category?: string | null
           created_at?: string | null
+          current_event?: string | null
           default_tolerance_minutes?: number
           description?: string | null
           email?: string | null
+          event_type?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
           menu_url?: string | null
           name?: string
           opening_hours?: Json | null
@@ -309,65 +327,18 @@ export type Database = {
       }
     }
     Views: {
-      restaurant_queue_stats: {
-        Row: {
-          avg_wait_time_today: number | null
-          max_wait_time_today: number | null
-          min_wait_time_today: number | null
-          restaurant_id: string | null
-          restaurant_name: string | null
-          total_served_today: number | null
-        }
-        Relationships: []
-      }
-      v_avg_wait_by_position: {
-        Row: {
-          avg_wait_min: number | null
-          initial_position: number | null
-          restaurant_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "parties_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurant_queue_stats"
-            referencedColumns: ["restaurant_id"]
-          },
-          {
-            foreignKeyName: "parties_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      v_restaurant_wait_stats: {
-        Row: {
-          avg_step_wait_min: number | null
-          restaurant_id: string | null
-          samples: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "parties_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurant_queue_stats"
-            referencedColumns: ["restaurant_id"]
-          },
-          {
-            foreignKeyName: "parties_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
+      call_next_in_queue: {
+        Args: { p_restaurant_id: string }
+        Returns: {
+          party_id: string
+          name: string
+          phone: string
+          party_size: number
+        }[]
+      }
       confirm_party_arrival: {
         Args: { party_uuid: string }
         Returns: boolean
@@ -386,12 +357,44 @@ export type Database = {
           tolerance_minutes: number
         }[]
       }
+      get_restaurants_with_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          address: string
+          phone: string
+          is_active: boolean
+          menu_url: string
+          avg_seat_time_minutes: number
+          category: string
+          current_event: string
+          event_type: string
+          image_url: string
+          latitude: number
+          longitude: number
+          queue_size: number
+          min_wait_time: number
+        }[]
+      }
+      get_user_restaurant_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      handle_no_show: {
+        Args: { party_uuid: string }
+        Returns: boolean
+      }
       mark_party_no_show: {
         Args: { party_uuid: string }
         Returns: boolean
       }
       move_party_to_next_position: {
         Args: { party_uuid: string }
+        Returns: boolean
+      }
+      user_owns_restaurant: {
+        Args: { restaurant_uuid: string }
         Returns: boolean
       }
     }
