@@ -1,4 +1,3 @@
-
 import QueueAnalytics from "@/components/QueueAnalytics";
 import { useEffect, useState } from "react";
 import EventManager from "@/components/EventManager";
@@ -253,7 +252,7 @@ const AdminDashboard = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => navigate(`/admin/settings`)}
+                onClick={() => navigate("/settings")}
               >
                 <Settings className="w-4 h-4 mr-2" />
                 Configurações
@@ -446,6 +445,14 @@ const AdminDashboard = () => {
                 >
                   <QrCode className="w-4 h-4 mr-2" />
                   Visualizar QR Code
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate("/settings")}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configurações
                 </Button>
                 <Button 
                   variant="outline" 

@@ -12,6 +12,7 @@ import QueuePage from "./pages/QueuePage";
 import NotFound from "./pages/NotFound";
 import ReceptionistDashboard from "./pages/ReceptionistDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EmailConfirm from "./pages/EmailConfirm";
@@ -42,6 +43,14 @@ const App = () => (
           element={
             <PrivateRoute>
               <AdminDashboard />
+            </PrivateRoute>
+          } 
+        />
+        <Route 
+          path="/settings" 
+          element={
+            <PrivateRoute>
+              <Settings />
             </PrivateRoute>
           } 
         />

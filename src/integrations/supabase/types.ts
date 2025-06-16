@@ -9,6 +9,132 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: unknown | null
+          restaurant_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          restaurant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          restaurant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_invoices: {
+        Row: {
+          amount: number
+          created_at: string | null
+          due_date: string
+          id: string
+          pdf_url: string | null
+          restaurant_id: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          due_date: string
+          id?: string
+          pdf_url?: string | null
+          restaurant_id?: string | null
+          status: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          due_date?: string
+          id?: string
+          pdf_url?: string | null
+          restaurant_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_invoices_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          end_datetime: string
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          restaurant_id: string | null
+          start_datetime: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          end_datetime: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          restaurant_id?: string | null
+          start_datetime: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          end_datetime?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          restaurant_id?: string | null
+          start_datetime?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parties: {
         Row: {
           arrived_at: string | null
@@ -196,6 +322,92 @@ export type Database = {
           },
         ]
       }
+      restaurant_settings: {
+        Row: {
+          auto_close_at_limit: boolean | null
+          created_at: string | null
+          crm_api_key: string | null
+          favicon_url: string | null
+          google_font: string | null
+          id: string
+          max_queue_size: number | null
+          min_password_length: number | null
+          notification_channels: string[] | null
+          peak_alert_staff: boolean | null
+          pos_api_key: string | null
+          primary_color: string | null
+          reminder_5min: boolean | null
+          require_2fa: boolean | null
+          require_numbers: boolean | null
+          require_uppercase: boolean | null
+          restaurant_id: string | null
+          secondary_color: string | null
+          tags: string[] | null
+          updated_at: string | null
+          visible_in_guide: boolean | null
+          webhook_url: string | null
+          welcome_message: string | null
+        }
+        Insert: {
+          auto_close_at_limit?: boolean | null
+          created_at?: string | null
+          crm_api_key?: string | null
+          favicon_url?: string | null
+          google_font?: string | null
+          id?: string
+          max_queue_size?: number | null
+          min_password_length?: number | null
+          notification_channels?: string[] | null
+          peak_alert_staff?: boolean | null
+          pos_api_key?: string | null
+          primary_color?: string | null
+          reminder_5min?: boolean | null
+          require_2fa?: boolean | null
+          require_numbers?: boolean | null
+          require_uppercase?: boolean | null
+          restaurant_id?: string | null
+          secondary_color?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          visible_in_guide?: boolean | null
+          webhook_url?: string | null
+          welcome_message?: string | null
+        }
+        Update: {
+          auto_close_at_limit?: boolean | null
+          created_at?: string | null
+          crm_api_key?: string | null
+          favicon_url?: string | null
+          google_font?: string | null
+          id?: string
+          max_queue_size?: number | null
+          min_password_length?: number | null
+          notification_channels?: string[] | null
+          peak_alert_staff?: boolean | null
+          pos_api_key?: string | null
+          primary_color?: string | null
+          reminder_5min?: boolean | null
+          require_2fa?: boolean | null
+          require_numbers?: boolean | null
+          require_uppercase?: boolean | null
+          restaurant_id?: string | null
+          secondary_color?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          visible_in_guide?: boolean | null
+          webhook_url?: string | null
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_settings_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: true
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurant_staff: {
         Row: {
           created_at: string | null
@@ -242,11 +454,57 @@ export type Database = {
           },
         ]
       }
+      restaurant_staff_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          invite_token: string
+          name: string
+          restaurant_id: string | null
+          role: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          invite_token: string
+          name: string
+          restaurant_id?: string | null
+          role: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invite_token?: string
+          name?: string
+          restaurant_id?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_staff_invites_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           address: string | null
           avg_seat_time_minutes: number | null
           category: string | null
+          city: string | null
+          closing_time: string | null
           created_at: string | null
           current_event: string | null
           default_tolerance_minutes: number
@@ -257,20 +515,29 @@ export type Database = {
           image_url: string | null
           is_active: boolean | null
           latitude: number | null
+          logo_url: string | null
           longitude: number | null
+          max_queue_size: number | null
           menu_url: string | null
           name: string
           opening_hours: Json | null
+          opening_time: string | null
           owner_id: string | null
           phone: string | null
+          plan_type: string | null
+          state: string | null
+          street: string | null
           tolerance_minutes: number | null
           updated_at: string | null
           website: string | null
+          zipcode: string | null
         }
         Insert: {
           address?: string | null
           avg_seat_time_minutes?: number | null
           category?: string | null
+          city?: string | null
+          closing_time?: string | null
           created_at?: string | null
           current_event?: string | null
           default_tolerance_minutes?: number
@@ -281,20 +548,29 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean | null
           latitude?: number | null
+          logo_url?: string | null
           longitude?: number | null
+          max_queue_size?: number | null
           menu_url?: string | null
           name: string
           opening_hours?: Json | null
+          opening_time?: string | null
           owner_id?: string | null
           phone?: string | null
+          plan_type?: string | null
+          state?: string | null
+          street?: string | null
           tolerance_minutes?: number | null
           updated_at?: string | null
           website?: string | null
+          zipcode?: string | null
         }
         Update: {
           address?: string | null
           avg_seat_time_minutes?: number | null
           category?: string | null
+          city?: string | null
+          closing_time?: string | null
           created_at?: string | null
           current_event?: string | null
           default_tolerance_minutes?: number
@@ -305,15 +581,22 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean | null
           latitude?: number | null
+          logo_url?: string | null
           longitude?: number | null
+          max_queue_size?: number | null
           menu_url?: string | null
           name?: string
           opening_hours?: Json | null
+          opening_time?: string | null
           owner_id?: string | null
           phone?: string | null
+          plan_type?: string | null
+          state?: string | null
+          street?: string | null
           tolerance_minutes?: number | null
           updated_at?: string | null
           website?: string | null
+          zipcode?: string | null
         }
         Relationships: [
           {
@@ -426,6 +709,10 @@ export type Database = {
       handle_no_show: {
         Args: { party_uuid: string }
         Returns: boolean
+      }
+      log_activity: {
+        Args: { p_restaurant_id: string; p_action: string; p_details?: Json }
+        Returns: undefined
       }
       mark_party_no_show: {
         Args: { party_uuid: string }
