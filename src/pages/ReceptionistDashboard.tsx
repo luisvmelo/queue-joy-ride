@@ -105,14 +105,10 @@ const ReceptionistDashboard = () => {
         )}
 
         {activeTab === 'qr' && restaurantId && (
-          <Card>
-            <CardHeader>
-              <CardTitle>QR Code do Restaurante</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <QRCodeGenerator restaurantId={restaurantId} />
-            </CardContent>
-          </Card>
+          <QRCodeGenerator 
+            restaurantId={restaurantId} 
+            restaurantName={restaurant?.name || 'Restaurante'}
+          />
         )}
       </div>
     </div>
