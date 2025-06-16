@@ -1,129 +1,117 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Download, Share2, Copy } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import QRCode from "react-qr-code";
+import React, { useState, useEffect } from 'react';
+import QRCode from 'react-qr-code';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { Download, Copy, QrCode as QrCodeIcon } from 'lucide-react';
 
 interface QRCodeGeneratorProps {
-  restaurantId?: string;
-  restaurantName?: string;
+  restaurantId: string;
+  restaurantName: string;
 }
 
 const QRCodeGenerator = ({ restaurantId, restaurantName }: QRCodeGeneratorProps) => {
   const { toast } = useToast();
-  
-  // Se restaurantId for fornecido, gera URL específica do restaurante
-  const targetUrl = restaurantId 
-    ? `${window.location.origin}/queue/${restaurantId}`
-    : `${window.location.origin}/check-in`;
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
 
-  const qrTitle = restaurantId && restaurantName
-    ? `QR Code - ${restaurantName}`
-    : "QR Code - Check-in Geral";
+  useEffect(() => {
+    // Generate the QR code URL for customers to join the queue
+    const baseUrl = window.location.origin;
+    const url = `${baseUrl}/check-in/${restaurantId}`;
+    setQrCodeUrl(url);
+  }, [restaurantId]);
 
-  /* ------------------------------------------------------------
-   * Download (PNG) — simples: abre a dataURL gerada pelo SVG
-   * ---------------------------------------------------------- */
-  const handleDownloadQR = () => {
-    const svg = document.getElementById(restaurantId ? `restaurant-qr-${restaurantId}` : "checkin-qr");
-    if (!svg) return;
-
-    // cria um canvas temporário para converter em PNG
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `qrcode-${restaurantId || 'checkin'}.svg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: "QR Code baixado!",
-      description: "Arquivo SVG salvo nos seus downloads.",
-    });
-  };
-
-  /* ------------------------------------------------------------
-   * Copiar link
-   * ---------------------------------------------------------- */
-  const handleCopyLink = async () => {
+  const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(targetUrl);
+      await navigator.clipboard.writeText(qrCodeUrl);
       toast({
         title: "Link copiado!",
-        description: "URL copiada para a área de transferência.",
+        description: "O link foi copiado para a área de transferência."
       });
     } catch (error) {
-      console.error('Erro ao copiar:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível copiar o link.",
-        variant: "destructive",
+        description: "Não foi possível copiar o link",
+        variant: "destructive"
       });
     }
   };
 
-  /* ------------------------------------------------------------
-   * Compartilhar / copiar link
-   * ---------------------------------------------------------- */
-  const handleShareQR = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Entre na Lista de Espera",
-          text: `Escaneie este QR Code para entrar na lista de espera${restaurantName ? ` do ${restaurantName}` : ''}`,
-          url: targetUrl,
-        });
-      } catch (error) {
-        console.log("Share cancelled:", error);
-      }
-    } else {
-      handleCopyLink();
+  const downloadQRCode = () => {
+    const svg = document.getElementById('qr-code-svg');
+    if (svg) {
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx?.drawImage(img, 0, 0);
+        
+        const pngFile = canvas.toDataURL('image/png');
+        const downloadLink = document.createElement('a');
+        downloadLink.download = `qr-code-${restaurantName.replace(/\s+/g, '-')}.png`;
+        downloadLink.href = pngFile;
+        downloadLink.click();
+      };
+      
+      img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
     }
   };
 
+  if (!qrCodeUrl) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* QR Code Display */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <span className="text-lg">{qrTitle}</span>
+        <CardHeader className="text-center">
+          <CardTitle className="flex items-center justify-center gap-2">
+            <QrCodeIcon className="w-5 h-5" />
+            QR Code
           </CardTitle>
+          <CardDescription>
+            Clientes podem escanear este código para entrar na fila
+          </CardDescription>
         </CardHeader>
-
-        <CardContent className="text-center">
-          {/* QR real */}
-          <div className="bg-white p-8 rounded-lg border-2 border-dashed border-gray-300 mb-4">
+        <CardContent className="flex flex-col items-center space-y-4">
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
             <QRCode
-              id={restaurantId ? `restaurant-qr-${restaurantId}` : "checkin-qr"}
-              value={targetUrl}
+              id="qr-code-svg"
+              value={qrCodeUrl}
               size={256}
-              bgColor="#ffffff"
-              fgColor="#000000"
-              style={{ margin: "0 auto", width: "16rem", height: "16rem" }}
+              style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+              viewBox="0 0 256 256"
             />
           </div>
-
-          <div className="space-y-3">
-            <Button onClick={handleDownloadQR} className="w-full">
+          
+          <div className="flex gap-2 w-full max-w-xs">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={downloadQRCode}
+              className="flex-1"
+            >
               <Download className="w-4 h-4 mr-2" />
-              Baixar QR Code
+              Baixar
             </Button>
-
-            <Button onClick={handleCopyLink} variant="outline" className="w-full">
+            <Button 
+              variant="default" 
+              size="sm"
+              onClick={copyToClipboard}
+              className="flex-1"
+            >
               <Copy className="w-4 h-4 mr-2" />
               Copiar Link
-            </Button>
-
-            <Button onClick={handleShareQR} variant="outline" className="w-full">
-              <Share2 className="w-4 h-4 mr-2" />
-              Compartilhar
             </Button>
           </div>
         </CardContent>
@@ -132,37 +120,56 @@ const QRCodeGenerator = ({ restaurantId, restaurantName }: QRCodeGeneratorProps)
       {/* Instructions */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            {restaurantId && restaurantName ? `QR Code - ${restaurantName}` : "QR Code da Administração"}
-          </CardTitle>
+          <CardTitle>Como usar</CardTitle>
+          <CardDescription>
+            Instruções para compartilhar o QR Code com seus clientes
+          </CardDescription>
         </CardHeader>
-
         <CardContent className="space-y-4">
-          <p className="text-sm text-gray-600">
-            {restaurantId && restaurantName 
-              ? `Gere, imprima e posicione este QR Code na entrada do ${restaurantName}. Os clientes podem escanear para acessar diretamente as opções do estabelecimento.`
-              : "Gere, imprima e posicione este QR Code na entrada do restaurante. A tela da recepção é sincronizada automaticamente."
-            }
-          </p>
-
-          <div className="border-t pt-4">
-            <h4 className="font-medium mb-2">Link direto:</h4>
-            <div className="bg-gray-50 p-3 rounded border break-all text-sm">
-              {targetUrl}
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                1
+              </div>
+              <div>
+                <h4 className="font-medium">Imprima ou exiba o QR Code</h4>
+                <p className="text-sm text-gray-600">
+                  Coloque o código em local visível no seu estabelecimento
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                2
+              </div>
+              <div>
+                <h4 className="font-medium">Oriente os clientes</h4>
+                <p className="text-sm text-gray-600">
+                  Peça para escanearem o código com a câmera do celular
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                3
+              </div>
+              <div>
+                <h4 className="font-medium">Gerencie a fila</h4>
+                <p className="text-sm text-gray-600">
+                  Acompanhe e chame os clientes através deste painel
+                </p>
+              </div>
             </div>
           </div>
-
-          {restaurantId && restaurantName && (
-            <div className="border-t pt-4">
-              <h4 className="font-medium mb-2">Funcionalidades disponíveis:</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Entrar na fila</li>
-                <li>• Ver menu do estabelecimento</li>
-                <li>• Fazer reserva</li>
-                <li>• Visualizar tempo de espera atual</li>
-              </ul>
-            </div>
-          )}
+          
+          <div className="pt-4 border-t">
+            <h4 className="font-medium mb-2">Link direto:</h4>
+            <p className="text-xs text-gray-600 break-all bg-gray-50 p-2 rounded">
+              {qrCodeUrl}
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
