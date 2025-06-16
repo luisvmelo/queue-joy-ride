@@ -343,6 +343,42 @@ export type Database = {
         Args: { party_uuid: string }
         Returns: boolean
       }
+      create_customer_party: {
+        Args: {
+          p_restaurant_id: string
+          p_name: string
+          p_phone: string
+          p_party_size: number
+          p_notification_type?: string
+        }
+        Returns: {
+          party_id: string
+          queue_position: number
+        }[]
+      }
+      get_customer_party: {
+        Args: {
+          party_uuid: string
+          customer_phone: string
+          customer_name: string
+        }
+        Returns: {
+          id: string
+          name: string
+          phone: string
+          party_size: number
+          queue_position: number
+          initial_position: number
+          estimated_wait_minutes: number
+          tolerance_minutes: number
+          joined_at: string
+          status: string
+          restaurant_id: string
+          restaurant_name: string
+          restaurant_menu_url: string
+          restaurant_avg_seat_time_minutes: number
+        }[]
+      }
       get_restaurant_queue: {
         Args: { restaurant_uuid: string }
         Returns: {
@@ -391,6 +427,10 @@ export type Database = {
       }
       move_party_to_next_position: {
         Args: { party_uuid: string }
+        Returns: boolean
+      }
+      update_customer_party_status: {
+        Args: { party_uuid: string; customer_phone: string; new_status: string }
         Returns: boolean
       }
       user_owns_restaurant: {
