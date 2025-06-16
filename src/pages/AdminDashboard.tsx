@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Users, Clock, Settings, QrCode, Download } from "lucide-react";
+import { LogOut, Users, Clock, Settings, QrCode } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import {
   Dialog,
@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import QRCodeGenerator from "@/components/QRCodeGenerator";
 
 type Restaurant = Database['public']['Tables']['restaurants']['Row'];
 type Party = Database['public']['Tables']['parties']['Row'];
@@ -29,7 +30,6 @@ const AdminDashboard = () => {
   const [parties, setParties] = useState<Party[]>([]);
   const [user, setUser] = useState<any>(null);
   const [showQRDialog, setShowQRDialog] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState("");
 
   useEffect(() => {
     checkAuth();
@@ -84,11 +84,6 @@ const AdminDashboard = () => {
       }
 
       setRestaurant(restaurantData);
-
-      // Gerar URL do QR Code
-      const baseUrl = window.location.origin;
-      const qrUrl = `${baseUrl}/check-in/${restaurantData.id}`;
-      setQrCodeUrl(qrUrl);
 
       // Buscar filas ativas do restaurante
       const { data: partiesData, error: partiesError } = await supabase
@@ -467,52 +462,18 @@ const AdminDashboard = () => {
 
       {/* QR Code Dialog */}
       <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>QR Code do Restaurante</DialogTitle>
             <DialogDescription>
-              Os clientes podem escanear este código para entrar na fila
+              Gere e compartilhe o QR Code para que os clientes possam entrar na fila
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col items-center space-y-4">
-            <div id="qr-code-canvas" className="bg-white p-4 rounded-lg">
-              {showQRDialog && (
-                <div className="w-64 h-64 bg-gray-100 flex items-center justify-center">
-                  <p className="text-gray-500">QR Code aqui</p>
-                </div>
-              )}
-            </div>
-            <p className="text-sm text-center text-gray-600 break-all">
-              {qrCodeUrl}
-            </p>
-            <div className="flex gap-2 w-full">
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => {
-                  toast({
-                    title: "Em desenvolvimento",
-                    description: "Função de download será implementada em breve"
-                  });
-                }}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Baixar
-              </Button>
-              <Button 
-                variant="default" 
-                className="flex-1"
-                onClick={() => {
-                  navigator.clipboard.writeText(qrCodeUrl);
-                  toast({
-                    title: "Link copiado!",
-                    description: "O link foi copiado para a área de transferência."
-                  });
-                }}
-              >
-                Copiar Link
-              </Button>
-            </div>
+          <div className="mt-4">
+            <QRCodeGenerator 
+              restaurantId={restaurant.id} 
+              restaurantName={restaurant.name}
+            />
           </div>
         </DialogContent>
       </Dialog>
