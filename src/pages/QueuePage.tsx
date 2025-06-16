@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -96,39 +97,40 @@ const QueuePage = () => {
     setSubmitting(true);
 
     try {
-      // Calcular posição na fila
-      const { count: currentQueueCount } = await supabase
-        .from('parties')
-        .select('*', { count: 'exact', head: true })
-        .eq('restaurant_id', restaurant.id)
-        .eq('status', 'waiting');
-
-      const position = (currentQueueCount || 0) + 1;
+      console.log('Creating party with secure function for restaurant:', restaurant.id);
       
-      // Inserir na fila
-      const { data: party, error } = await supabase
-        .from('parties')
-        .insert({
-          restaurant_id: restaurant.id,
-          name: formData.name,
-          phone: formData.phone,
-          party_size: formData.partySize,
-          notification_type: formData.notificationType,
-          status: 'waiting',
-          queue_position: position
-        })
-        .select()
-        .single();
+      // Use the secure create_customer_party function instead of direct insert
+      const { data, error } = await supabase
+        .rpc('create_customer_party', {
+          p_restaurant_id: restaurant.id,
+          p_name: formData.name,
+          p_phone: formData.phone,
+          p_party_size: formData.partySize,
+          p_notification_type: formData.notificationType
+        });
 
-      if (error) throw error;
+      console.log('RPC response:', { data, error });
 
-      toast({
-        title: "Você entrou na fila!",
-        description: `Posição: ${position}. Você será notificado quando sua mesa estiver pronta.`,
-      });
+      if (error) {
+        console.error('RPC error:', error);
+        throw error;
+      }
 
-      // Redirecionar para página de status
-      navigate(`/status/${party.id}`);
+      if (data && data.length > 0) {
+        const { party_id, queue_position } = data[0];
+        
+        console.log('Party created successfully:', { party_id, queue_position });
+
+        toast({
+          title: "Você entrou na fila!",
+          description: `Posição: ${queue_position}. Você será notificado quando sua mesa estiver pronta.`,
+        });
+
+        // Redirecionar para página de status
+        navigate(`/status/${party_id}`);
+      } else {
+        throw new Error('Nenhum dado retornado da criação da party');
+      }
 
     } catch (error: any) {
       console.error('Erro ao entrar na fila:', error);

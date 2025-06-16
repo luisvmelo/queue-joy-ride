@@ -104,6 +104,13 @@ const CheckIn = () => {
       const sanitizedName = sanitizeInput(formData.name);
       const sanitizedPhone = formData.phone.replace(/[^\d+\-\s()]/g, '');
 
+      console.log('Creating party with data:', {
+        restaurant_id: restaurantId,
+        name: sanitizedName,
+        phone: sanitizedPhone,
+        party_size: formData.partySize
+      });
+
       // Use secure function for party creation
       const { data, error } = await supabase
         .rpc('create_customer_party', {
@@ -114,10 +121,17 @@ const CheckIn = () => {
           p_notification_type: 'sms'
         });
 
-      if (error) throw error;
+      console.log('RPC response:', { data, error });
+
+      if (error) {
+        console.error('RPC error:', error);
+        throw error;
+      }
 
       if (data && data.length > 0) {
         const { party_id, queue_position } = data[0];
+        
+        console.log('Party created successfully:', { party_id, queue_position });
         
         // Store customer credentials securely in localStorage for status page access
         localStorage.setItem(`party_${party_id}_phone`, sanitizedPhone);
@@ -129,6 +143,8 @@ const CheckIn = () => {
         });
 
         navigate(`/status/${party_id}`);
+      } else {
+        throw new Error('Nenhum dado retornado da criação da party');
       }
     } catch (error: any) {
       console.error('Error joining queue:', error);
