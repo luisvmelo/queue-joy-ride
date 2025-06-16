@@ -417,6 +417,12 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_user_restaurant_ids: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          restaurant_id: string
+        }[]
+      }
       handle_no_show: {
         Args: { party_uuid: string }
         Returns: boolean
@@ -431,6 +437,10 @@ export type Database = {
       }
       update_customer_party_status: {
         Args: { party_uuid: string; customer_phone: string; new_status: string }
+        Returns: boolean
+      }
+      user_can_access_restaurant: {
+        Args: { restaurant_uuid: string }
         Returns: boolean
       }
       user_owns_restaurant: {

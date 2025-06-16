@@ -31,8 +31,9 @@ export const useDashboardAuth = () => {
 
       setUser(session.user);
 
-      const { data: userRestaurantId, error: restaurantError } = await supabase
-        .rpc('get_user_restaurant_id');
+      // Use the new security definer function to get user's restaurant
+      const { data: restaurantIds, error: restaurantError } = await supabase
+        .rpc('get_user_restaurant_ids');
 
       if (restaurantError) {
         console.error('Error getting user restaurant:', restaurantError);
@@ -45,7 +46,7 @@ export const useDashboardAuth = () => {
         return;
       }
 
-      if (!userRestaurantId) {
+      if (!restaurantIds || restaurantIds.length === 0) {
         toast({
           title: "Acesso negado",
           description: "Você não tem permissão para acessar este dashboard",
@@ -55,9 +56,15 @@ export const useDashboardAuth = () => {
         return;
       }
 
-      setRestaurantId(userRestaurantId);
+      // Use the first restaurant ID found
+      setRestaurantId(restaurantIds[0].restaurant_id);
     } catch (error) {
       console.error('Authentication error:', error);
+      toast({
+        title: "Erro de autenticação",
+        description: "Ocorreu um erro durante a verificação de acesso",
+        variant: "destructive"
+      });
       navigate("/login");
     } finally {
       setLoading(false);
