@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ const CheckIn = () => {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
-    partySize: 1,
+    partySize: "",
   });
 
   useEffect(() => {
@@ -52,16 +51,13 @@ const CheckIn = () => {
     }
   };
 
-  // Input validation functions
   const validatePhone = (phone: string): boolean => {
-    // Brazilian phone number validation - allow digits, spaces, parentheses, hyphens, and +
     const phoneRegex = /^[\d\s()+-]+$/;
     const cleanPhone = phone.replace(/\s/g, '');
     return phoneRegex.test(phone) && cleanPhone.length >= 10 && cleanPhone.length <= 15;
   };
 
   const sanitizeInput = (input: string): string => {
-    // Remove potentially dangerous characters to prevent XSS
     return input.replace(/[<>"/\\]/g, '').trim();
   };
 
@@ -88,10 +84,11 @@ const CheckIn = () => {
       return;
     }
 
-    if (formData.partySize < 1 || formData.partySize > 20) {
+    const partySizeNum = parseInt(formData.partySize) || 0;
+    if (partySizeNum < 1 || partySizeNum > 20) {
       toast({
         title: "Erro",
-        description: "Tamanho do grupo deve estar entre 1 e 20 pessoas",
+        description: "Número de pessoas deve estar entre 1 e 20",
         variant: "destructive"
       });
       return;
@@ -100,7 +97,6 @@ const CheckIn = () => {
     setLoading(true);
 
     try {
-      // Sanitize inputs
       const sanitizedName = sanitizeInput(formData.name);
       const sanitizedPhone = formData.phone.replace(/[^\d+\-\s()]/g, '');
 
@@ -108,16 +104,15 @@ const CheckIn = () => {
         restaurant_id: restaurantId,
         name: sanitizedName,
         phone: sanitizedPhone,
-        party_size: formData.partySize
+        party_size: partySizeNum
       });
 
-      // Use secure function for party creation
       const { data, error } = await supabase
         .rpc('create_customer_party', {
           p_restaurant_id: restaurantId,
           p_name: sanitizedName,
           p_phone: sanitizedPhone,
-          p_party_size: formData.partySize,
+          p_party_size: partySizeNum,
           p_notification_type: 'sms'
         });
 
@@ -133,7 +128,6 @@ const CheckIn = () => {
         
         console.log('Party created successfully:', { party_id, queue_position });
         
-        // Store customer credentials securely in localStorage for status page access
         localStorage.setItem(`party_${party_id}_phone`, sanitizedPhone);
         localStorage.setItem(`party_${party_id}_name`, sanitizedName);
 
@@ -219,11 +213,18 @@ const CheckIn = () => {
                 <Label htmlFor="partySize">Número de pessoas *</Label>
                 <Input
                   id="partySize"
-                  type="number"
-                  min="1"
-                  max="20"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Digite o número de pessoas"
                   value={formData.partySize}
-                  onChange={(e) => setFormData({ ...formData, partySize: parseInt(e.target.value) || 1 })}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    if (value === '' || (parseInt(value) >= 1 && parseInt(value) <= 20)) {
+                      setFormData({ ...formData, partySize: value });
+                    }
+                  }}
+                  onFocus={(e) => e.target.select()}
                   required
                   disabled={loading}
                 />
