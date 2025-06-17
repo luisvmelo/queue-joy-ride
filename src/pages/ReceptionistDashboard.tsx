@@ -3,13 +3,11 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserPlus } from "lucide-react";
 import QRCodeGenerator from "@/components/QRCodeGenerator";
-import CurrentQueue from "@/components/CurrentQueue";
-import QueueStatus from "@/components/QueueStatus";
 import ManualQueueEntry from "@/components/ManualQueueEntry";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatsCards from "@/components/dashboard/StatsCards";
 import NavigationTabs from "@/components/dashboard/NavigationTabs";
-import ReadyParties from "@/components/dashboard/ReadyParties";
+import QueueManagement from "@/components/dashboard/QueueManagement";
 import LoadingSpinner from "@/components/dashboard/LoadingSpinner";
 import AccessDenied from "@/components/dashboard/AccessDenied";
 import { useDashboardAuth } from "@/hooks/useDashboardAuth";
@@ -17,7 +15,7 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { useDashboardActions } from "@/hooks/useDashboardActions";
 
 const ReceptionistDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'qr' | 'queue' | 'status'>('status');
+  const [activeTab, setActiveTab] = useState<'queue' | 'qr' | 'manual'>('queue');
   
   const { loading, user, restaurantId } = useDashboardAuth();
   const { queueData, restaurant, stats, fetchQueueData } = useDashboardData(restaurantId, user);
@@ -25,8 +23,6 @@ const ReceptionistDashboard = () => {
     handleCallNext,
     handleConfirmArrival,
     handleMarkNoShow,
-    handleSendNotification,
-    handleSendBulkNotification,
     handleSignOut
   } = useDashboardActions(restaurantId, fetchQueueData);
 
@@ -34,7 +30,7 @@ const ReceptionistDashboard = () => {
     return <LoadingSpinner />;
   }
 
-  if (!restaurantId || !user) {
+  if (!restaurantId) {
     return <AccessDenied />;
   }
 
@@ -50,10 +46,27 @@ const ReceptionistDashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <StatsCards stats={stats} />
         
-        <NavigationTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        <NavigationTabs 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          tabs={[
+            { id: 'queue', label: 'Gerenciar Fila' },
+            { id: 'manual', label: 'Adicionar Cliente' },
+            { id: 'qr', label: 'QR Code' }
+          ]}
+        />
 
-        {/* Manual Queue Entry - Always visible */}
-        <div className="mb-6">
+        {/* Content based on active tab */}
+        {activeTab === 'queue' && (
+          <QueueManagement
+            queueData={queueData}
+            onCallNext={handleCallNext}
+            onConfirmArrival={handleConfirmArrival}
+            onMarkNoShow={handleMarkNoShow}
+          />
+        )}
+
+        {activeTab === 'manual' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -68,41 +81,6 @@ const ReceptionistDashboard = () => {
               />
             </CardContent>
           </Card>
-        </div>
-
-        {/* Content based on active tab */}
-        {activeTab === 'status' && (
-          <div className="space-y-4">
-            <ReadyParties
-              queueData={queueData}
-              onConfirmArrival={handleConfirmArrival}
-              onMarkNoShow={handleMarkNoShow}
-            />
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Status da Fila</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <QueueStatus
-                  queueData={queueData.filter(p => p.status === 'waiting' || p.status === 'ready').slice(0, 5)}
-                  onConfirmArrival={handleConfirmArrival}
-                  onMarkNoShow={handleMarkNoShow}
-                  onCallNext={handleCallNext}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {activeTab === 'queue' && (
-          <CurrentQueue
-            queueData={queueData}
-            onConfirmArrival={handleConfirmArrival}
-            onMarkNoShow={handleMarkNoShow}
-            onSendNotification={handleSendNotification}
-            onSendBulkNotification={handleSendBulkNotification}
-          />
         )}
 
         {activeTab === 'qr' && restaurantId && (

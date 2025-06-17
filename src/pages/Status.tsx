@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Bell, BellOff } from "lucide-react";
 
-import TurnModal from "@/components/TurnModal";
+import TurnNotificationModal from "@/components/TurnNotificationModal";
 import LeaveQueueConfirmation from "@/components/LeaveQueueConfirmation";
 import ThankYouScreen from "@/components/ThankYouScreen";
 import NoShowScreen from "@/components/NoShowScreen";
-import TimeDisplay from "@/components/TimeDisplay";
+import TimeCounter from "@/components/TimeCounter";
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,6 +58,7 @@ const Status = () => {
 
   /* modais */
   const [turnModal, setTurnModal] = useState(false);
+  const [nextModal, setNextModal] = useState(false);
   const [leaveModal, setLeaveModal] = useState(false);
   const [thanksOpen, setThanksOpen] = useState(false);
   const [noShowOpen, setNoShowOpen] = useState(false);
@@ -160,15 +161,16 @@ const Status = () => {
           setBetterEstimatedTime(eta);
         }
 
-        // Verificar se chegou a vez e mostrar modal
-        if (formattedParty.status === 'next' && !hasNotifiedNext.current) {
-          setTurnModal(true);
+        // Verificar se é o próximo na fila (posição 1 mas ainda waiting)
+        if (formattedParty.queue_position === 1 && formattedParty.status === 'waiting' && !hasNotifiedNext.current) {
+          setNextModal(true);
           hasNotifiedNext.current = true;
           playNotificationSound();
         }
 
         // Verificar se a mesa está pronta
         if (formattedParty.status === 'ready' && !hasNotifiedReady.current) {
+          setTurnModal(true);
           hasNotifiedReady.current = true;
           playNotificationSound();
           
@@ -403,8 +405,12 @@ const Status = () => {
           {/* Time Info */}
           <div className="grid grid-cols-2 gap-4 text-center mb-4">
             <div>
-              <p className="text-sm text-gray-600">Tempo decorrido</p>
-              <p className="text-lg font-semibold">{elapsedMinutes} min</p>
+              {party.joined_at && (
+                <TimeCounter 
+                  startTime={party.joined_at}
+                  label="Tempo na fila"
+                />
+              )}
             </div>
             <div>
               <p className="text-sm text-gray-600">Tempo estimado</p>
@@ -419,8 +425,8 @@ const Status = () => {
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
               <div className="text-center">
                 <p className="text-sm text-red-600 mb-2">Tempo para comparecer:</p>
-                <TimeDisplay 
-                  timeInSeconds={toleranceLeft} 
+                <TimeCounter 
+                  startTime={new Date(Date.now() - ((party.tolerance_minutes || 10) * 60 * 1000 - toleranceLeft * 1000)).toISOString()}
                   label="para comparecer"
                   className="text-red-700 font-bold" 
                 />
@@ -471,12 +477,21 @@ const Status = () => {
       </div>
 
       {/* Modals */}
-      <TurnModal
+      <TurnNotificationModal
         isOpen={turnModal}
         onConfirm={() => setTurnModal(false)}
         onCancel={() => setTurnModal(false)}
         toleranceTimeLeft={toleranceLeft ?? (party.tolerance_minutes ?? 10) * 60}
         restaurantName={party.restaurant_name ?? ""}
+      />
+
+      <TurnNotificationModal
+        isOpen={nextModal}
+        onConfirm={() => setNextModal(false)}
+        onCancel={() => setNextModal(false)}
+        toleranceTimeLeft={0}
+        restaurantName={party.restaurant_name ?? ""}
+        isNextInLine={true}
       />
 
       <LeaveQueueConfirmation
