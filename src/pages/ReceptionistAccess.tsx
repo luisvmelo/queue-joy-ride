@@ -18,12 +18,26 @@ const ReceptionistAccess = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (restaurantId) {
-      fetchRestaurant();
+    console.log('URL params:', { restaurantId });
+    console.log('Current URL:', window.location.href);
+    
+    if (restaurantId && restaurantId !== ':restaurantId') {
+      // Verificar se é um UUID válido
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(restaurantId)) {
+        fetchRestaurant();
+      } else {
+        toast({
+          title: "Erro",
+          description: "ID do restaurante inválido. Use um UUID válido.",
+          variant: "destructive"
+        });
+        navigate('/');
+      }
     } else {
       toast({
         title: "Erro",
-        description: "ID do restaurante não encontrado na URL",
+        description: "ID do restaurante não encontrado na URL. Acesse /receptionist-access/[ID_DO_RESTAURANTE]",
         variant: "destructive"
       });
       navigate('/');
@@ -124,12 +138,15 @@ const ReceptionistAccess = () => {
     }
   };
 
-  if (!restaurantId) {
+  if (!restaurantId || restaurantId === ':restaurantId') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
             <p className="text-red-600">ID do restaurante não encontrado na URL</p>
+            <p className="text-sm text-gray-600 mt-2">
+              Acesse: /receptionist-access/[ID_DO_RESTAURANTE]
+            </p>
             <Button onClick={() => navigate('/')} className="mt-4">
               Voltar ao início
             </Button>
@@ -190,11 +207,23 @@ const ReceptionistAccess = () => {
             <p className="text-xs text-blue-700 text-center">
               💡 <strong>Dica:</strong> O código é RECEP + últimos 4 dígitos do ID do restaurante
             </p>
-            {restaurantId && (
+            {restaurantId && restaurantId !== ':restaurantId' && (
               <p className="text-xs text-blue-600 text-center mt-1">
                 Para este restaurante: <strong>RECEP{restaurantId.slice(-4)}</strong>
               </p>
             )}
+          </div>
+
+          <div className="bg-yellow-50 p-3 rounded-lg">
+            <p className="text-xs text-yellow-700 text-center">
+              <strong>Debug Info:</strong>
+            </p>
+            <p className="text-xs text-yellow-600 text-center mt-1">
+              Restaurant ID: {restaurantId}
+            </p>
+            <p className="text-xs text-yellow-600 text-center">
+              URL: {window.location.pathname}
+            </p>
           </div>
         </CardContent>
       </Card>
