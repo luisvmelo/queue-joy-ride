@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const ReceptionistAccess = () => {
-  const { restaurantId } = useParams();
+  const { restaurantId } = useParams<{ restaurantId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -20,24 +20,46 @@ const ReceptionistAccess = () => {
   useEffect(() => {
     if (restaurantId) {
       fetchRestaurant();
+    } else {
+      toast({
+        title: "Erro",
+        description: "ID do restaurante não encontrado na URL",
+        variant: "destructive"
+      });
+      navigate('/');
     }
   }, [restaurantId]);
 
   const fetchRestaurant = async () => {
+    if (!restaurantId) return;
+    
     try {
+      console.log('Fetching restaurant with ID:', restaurantId);
       const { data, error } = await supabase
         .from('restaurants')
         .select('name, is_active')
         .eq('id', restaurantId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching restaurant:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        throw new Error('Restaurante não encontrado');
+      }
+      
+      if (!data.is_active) {
+        throw new Error('Restaurante não está ativo');
+      }
+      
       setRestaurant(data);
     } catch (error) {
       console.error('Error fetching restaurant:', error);
       toast({
         title: "Erro",
-        description: "Restaurante não encontrado",
+        description: "Restaurante não encontrado ou inativo",
         variant: "destructive"
       });
       navigate('/');
@@ -54,17 +76,28 @@ const ReceptionistAccess = () => {
       return;
     }
 
+    if (!restaurantId) {
+      toast({
+        title: "Erro",
+        description: "ID do restaurante não encontrado",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     
     try {
       // Simular validação do código (em produção, validar no backend)
       // Por simplicidade, usando um código padrão: RECEP + últimos 4 dígitos do restaurant ID
-      const expectedCode = `RECEP${restaurantId?.slice(-4)}`;
+      const expectedCode = `RECEP${restaurantId.slice(-4)}`;
+      
+      console.log('Expected code:', expectedCode, 'Entered code:', accessCode.toUpperCase());
       
       if (accessCode.toUpperCase() === expectedCode) {
         // Salvar acesso na sessão
         localStorage.setItem(`receptionist_access_${restaurantId}`, 'true');
-        localStorage.setItem(`receptionist_restaurant`, restaurantId || '');
+        localStorage.setItem(`receptionist_restaurant`, restaurantId);
         
         toast({
           title: "Acesso liberado",
@@ -90,6 +123,21 @@ const ReceptionistAccess = () => {
       setLoading(false);
     }
   };
+
+  if (!restaurantId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center">
+            <p className="text-red-600">ID do restaurante não encontrado na URL</p>
+            <Button onClick={() => navigate('/')} className="mt-4">
+              Voltar ao início
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center p-4">
@@ -142,6 +190,11 @@ const ReceptionistAccess = () => {
             <p className="text-xs text-blue-700 text-center">
               💡 <strong>Dica:</strong> O código é RECEP + últimos 4 dígitos do ID do restaurante
             </p>
+            {restaurantId && (
+              <p className="text-xs text-blue-600 text-center mt-1">
+                Para este restaurante: <strong>RECEP{restaurantId.slice(-4)}</strong>
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
