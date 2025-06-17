@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, XCircle, Phone, Users, Clock, Search } from "lucide-react";
+import { CheckCircle, Phone, Users, Search } from "lucide-react";
 import TimeCounter from "@/components/TimeCounter";
 
 interface QueueParty {
@@ -113,7 +113,7 @@ const QueueManagement = ({
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center text-orange-800">
-                <Clock className="w-5 h-5 mr-2" />
+                <Users className="w-5 h-5 mr-2" />
                 Cliente Chamado - Aguardando Chegada
               </span>
             </CardTitle>
@@ -131,11 +131,19 @@ const QueueManagement = ({
 
               <div className="text-center">
                 {displayCurrentParty.notified_ready_at && (
-                  <TimeCounter
-                    startTime={displayCurrentParty.notified_ready_at}
-                    label="Tempo desde a chamada"
-                    className="text-orange-600"
-                  />
+                  <div>
+                    <TimeCounter
+                      startTime={displayCurrentParty.notified_ready_at}
+                      label="Tempo desde a chamada"
+                      className="text-orange-600"
+                    />
+                    <div className="mt-2 text-sm text-gray-600">
+                      <p>Tolerância: {displayCurrentParty.tolerance_minutes || 2} min + 30s</p>
+                      <p className="text-xs text-gray-500">
+                        Remoção automática após este tempo
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -146,13 +154,6 @@ const QueueManagement = ({
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Confirmar Chegada
-                </Button>
-                <Button 
-                  onClick={() => onMarkNoShow(displayCurrentParty.party_id)}
-                  variant="destructive"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Não Compareceu
                 </Button>
               </div>
             </div>
