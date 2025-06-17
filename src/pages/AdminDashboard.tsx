@@ -1,3 +1,4 @@
+
 import QueueAnalytics from "@/components/QueueAnalytics";
 import { useEffect, useState } from "react";
 import EventManager from "@/components/EventManager";
@@ -247,7 +248,7 @@ const AdminDashboard = () => {
                 onClick={() => setShowQRDialog(true)}
               >
                 <QrCode className="w-4 h-4 mr-2" />
-                QR Code
+                Acessos
               </Button>
               <Button 
                 variant="outline" 
