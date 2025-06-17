@@ -46,18 +46,28 @@ const ManualQueueEntry = ({ restaurantId, onPartyAdded }: ManualQueueEntryProps)
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('parties')
-        .insert({
-          restaurant_id: restaurantId,
-          name: formData.name.trim(),
-          phone: formData.phone.trim() || 'Não informado',
-          party_size: formData.party_size,
-          notification_type: 'manual',
-          status: 'waiting'
-        });
+      console.log('Adding party manually with data:', {
+        restaurantId,
+        name: formData.name.trim(),
+        phone: formData.phone.trim() || 'Não informado',
+        party_size: formData.party_size
+      });
 
-      if (error) throw error;
+      // Use the database function instead of direct insert
+      const { data, error } = await supabase.rpc('create_customer_party', {
+        p_restaurant_id: restaurantId,
+        p_name: formData.name.trim(),
+        p_phone: formData.phone.trim() || 'Não informado',
+        p_party_size: formData.party_size,
+        p_notification_type: 'manual'
+      });
+
+      if (error) {
+        console.error('Error from create_customer_party:', error);
+        throw error;
+      }
+
+      console.log('Party added successfully:', data);
 
       toast({
         title: "Grupo adicionado",
@@ -73,7 +83,7 @@ const ManualQueueEntry = ({ restaurantId, onPartyAdded }: ManualQueueEntryProps)
       console.error('Error adding party:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível adicionar o grupo à fila",
+        description: `Não foi possível adicionar o grupo à fila: ${error.message}`,
         variant: "destructive"
       });
     } finally {
