@@ -47,27 +47,41 @@ serve(async (req) => {
       )
     }
 
+    console.log(`Encontrados ${expiredParties.length} clientes para verificar`)
     let processedCount = 0
 
     for (const party of expiredParties) {
       const notifiedTime = new Date(party.notified_ready_at)
-      const toleranceMinutes = party.tolerance_minutes || 2
+      
+      // Buscar configuração de tolerância do restaurante
+      const { data: restaurantData } = await supabaseClient
+        .from('restaurants')
+        .select('default_tolerance_minutes')
+        .eq('id', party.restaurant_id)
+        .single()
+      
+      const toleranceMinutes = restaurantData?.default_tolerance_minutes || party.tolerance_minutes || 2
       const toleranceMs = (toleranceMinutes * 60 * 1000) + (30 * 1000) // tolerance + 30 segundos
       const elapsed = now.getTime() - notifiedTime.getTime()
 
+      console.log(`Cliente ${party.name}: ${Math.floor(elapsed/1000)}s decorridos, tolerância: ${toleranceMinutes}min + 30s = ${Math.floor(toleranceMs/1000)}s`)
+
       if (elapsed >= toleranceMs) {
-        console.log(`Marcando ${party.name} como no-show (${Math.floor(elapsed/1000)}s decorridos)`)
+        console.log(`⏰ Marcando ${party.name} como no-show (${Math.floor(elapsed/1000)}s decorridos, limite: ${Math.floor(toleranceMs/1000)}s)`)
         
         // Marcar como no-show usando a função existente
         const { error: noShowError } = await supabaseClient
           .rpc('mark_party_no_show', { party_uuid: party.id })
 
         if (noShowError) {
-          console.error(`Erro ao marcar ${party.name} como no-show:`, noShowError)
+          console.error(`❌ Erro ao marcar ${party.name} como no-show:`, noShowError)
         } else {
           processedCount++
           console.log(`✅ ${party.name} marcado como no-show automaticamente`)
         }
+      } else {
+        const remainingMs = toleranceMs - elapsed
+        console.log(`⏳ ${party.name} ainda tem ${Math.floor(remainingMs/1000)}s restantes`)
       }
     }
     
@@ -76,14 +90,15 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Processados ${processedCount} clientes expirados`,
+        message: `Processados ${processedCount} clientes expirados de ${expiredParties.length} verificados`,
         processed: processedCount,
+        total_checked: expiredParties.length,
         timestamp: now.toISOString()
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     )
   } catch (error) {
-    console.error("Erro na função auto-remove-no-show:", error)
+    console.error("❌ Erro na função auto-remove-no-show:", error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

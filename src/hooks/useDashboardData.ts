@@ -40,6 +40,21 @@ export const useDashboardData = (restaurantId: string | null, user: any) => {
     nextInLine: null
   });
 
+  // Função para executar remoção automática de no-shows
+  const runAutoRemoveNoShow = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-remove-no-show');
+      if (error) {
+        console.error('Erro ao executar auto-remove-no-show:', error);
+      } else if (data?.processed > 0) {
+        console.log(`Auto-remove executado: ${data.processed} clientes removidos`);
+        fetchQueueData(); // Atualizar dados após remoção
+      }
+    } catch (error) {
+      console.error('Erro na execução do auto-remove:', error);
+    }
+  };
+
   useEffect(() => {
     if (restaurantId && user) {
       fetchRestaurantData();
@@ -61,8 +76,17 @@ export const useDashboardData = (restaurantId: string | null, user: any) => {
         )
         .subscribe();
 
+      // Executar auto-remove a cada 30 segundos
+      const autoRemoveInterval = setInterval(() => {
+        runAutoRemoveNoShow();
+      }, 30000);
+
+      // Executar uma vez imediatamente
+      runAutoRemoveNoShow();
+
       return () => {
         supabase.removeChannel(channel);
+        clearInterval(autoRemoveInterval);
       };
     }
   }, [restaurantId, user]);
