@@ -81,13 +81,14 @@ const ReceptionistDashboard = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Próximos 5 da Fila</CardTitle>
+                <CardTitle>Status da Fila</CardTitle>
               </CardHeader>
               <CardContent>
                 <QueueStatus
-                  queueData={queueData.filter(p => p.status === 'waiting').slice(0, 5)}
+                  queueData={queueData.filter(p => p.status === 'waiting' || p.status === 'ready').slice(0, 5)}
                   onConfirmArrival={handleConfirmArrival}
                   onMarkNoShow={handleMarkNoShow}
+                  onCallNext={handleCallNext}
                 />
               </CardContent>
             </Card>
