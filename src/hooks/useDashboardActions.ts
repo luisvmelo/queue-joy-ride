@@ -38,7 +38,7 @@ export const useDashboardActions = (restaurantId: string | null, fetchQueueData:
 
       toast({
         title: "Próximo chamado!",
-        description: "O próximo cliente foi notificado",
+        description: `${nextParty.name} foi notificado`,
       });
 
       fetchQueueData();
@@ -54,6 +54,8 @@ export const useDashboardActions = (restaurantId: string | null, fetchQueueData:
 
   const handleConfirmArrival = async (partyId: string) => {
     try {
+      console.log('Confirming arrival for party:', partyId);
+      
       const { data, error } = await supabase.rpc('confirm_party_arrival', {
         party_uuid: partyId
       });
@@ -62,7 +64,7 @@ export const useDashboardActions = (restaurantId: string | null, fetchQueueData:
 
       toast({
         title: "Chegada confirmada",
-        description: "Cliente foi acomodado com sucesso",
+        description: "Cliente foi acomodado e movido para o histórico",
       });
       
       fetchQueueData();
@@ -78,6 +80,8 @@ export const useDashboardActions = (restaurantId: string | null, fetchQueueData:
 
   const handleMarkNoShow = async (partyId: string) => {
     try {
+      console.log('Marking no-show for party:', partyId);
+      
       const { data, error } = await supabase.rpc('mark_party_no_show', {
         party_uuid: partyId
       });
@@ -86,7 +90,7 @@ export const useDashboardActions = (restaurantId: string | null, fetchQueueData:
 
       toast({
         title: "Marcado como ausente",
-        description: "Cliente foi marcado como não compareceu",
+        description: "Cliente foi marcado como não compareceu e movido para o histórico",
       });
       
       fetchQueueData();
@@ -134,6 +138,13 @@ export const useDashboardActions = (restaurantId: string | null, fetchQueueData:
 
   const handleSignOut = async () => {
     try {
+      // Limpar dados de recepcionista se existirem
+      const receptionistRestaurant = localStorage.getItem('receptionist_restaurant');
+      if (receptionistRestaurant) {
+        localStorage.removeItem(`receptionist_access_${receptionistRestaurant}`);
+        localStorage.removeItem('receptionist_restaurant');
+      }
+      
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Error signing out:', error);

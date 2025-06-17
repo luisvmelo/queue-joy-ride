@@ -108,6 +108,7 @@ export const useDashboardData = (restaurantId: string | null, user: any) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
+      // Buscar dados do histórico para estatísticas mais precisas
       const { count: servedCount } = await supabase
         .from('queue_history')
         .select('*', { count: 'exact', head: true })
