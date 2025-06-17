@@ -15,7 +15,7 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { useDashboardActions } from "@/hooks/useDashboardActions";
 
 const ReceptionistDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'queue' | 'qr' | 'manual'>('queue');
+  const [activeTab, setActiveTab] = useState<string>('queue');
   
   const { loading, user, restaurantId } = useDashboardAuth();
   const { queueData, restaurant, stats, fetchQueueData } = useDashboardData(restaurantId, user);

@@ -1,39 +1,51 @@
 
 import { Button } from "@/components/ui/button";
-import { Clock, Users, QrCode } from "lucide-react";
+import { Clock, Users, QrCode, UserPlus } from "lucide-react";
 
-interface NavigationTabsProps {
-  activeTab: 'qr' | 'queue' | 'status';
-  setActiveTab: (tab: 'qr' | 'queue' | 'status') => void;
+interface Tab {
+  id: string;
+  label: string;
+  icon?: React.ComponentType<any>;
 }
 
-const NavigationTabs = ({ activeTab, setActiveTab }: NavigationTabsProps) => {
+interface NavigationTabsProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  tabs: Tab[];
+}
+
+const NavigationTabs = ({ activeTab, setActiveTab, tabs }: NavigationTabsProps) => {
+  const getIcon = (tabId: string) => {
+    switch (tabId) {
+      case 'status':
+        return Clock;
+      case 'queue':
+        return Users;
+      case 'qr':
+        return QrCode;
+      case 'manual':
+        return UserPlus;
+      default:
+        return Users;
+    }
+  };
+
   return (
     <div className="flex space-x-1 bg-white rounded-lg p-1 shadow-sm border mb-6">
-      <Button
-        variant={activeTab === 'status' ? 'default' : 'ghost'}
-        onClick={() => setActiveTab('status')}
-        className="flex-1"
-      >
-        <Clock className="w-4 h-4 mr-2" />
-        Status da Fila
-      </Button>
-      <Button
-        variant={activeTab === 'queue' ? 'default' : 'ghost'}
-        onClick={() => setActiveTab('queue')}
-        className="flex-1"
-      >
-        <Users className="w-4 h-4 mr-2" />
-        Fila Completa
-      </Button>
-      <Button
-        variant={activeTab === 'qr' ? 'default' : 'ghost'}
-        onClick={() => setActiveTab('qr')}
-        className="flex-1"
-      >
-        <QrCode className="w-4 h-4 mr-2" />
-        QR Code
-      </Button>
+      {tabs.map((tab) => {
+        const IconComponent = tab.icon || getIcon(tab.id);
+        return (
+          <Button
+            key={tab.id}
+            variant={activeTab === tab.id ? 'default' : 'ghost'}
+            onClick={() => setActiveTab(tab.id)}
+            className="flex-1"
+          >
+            <IconComponent className="w-4 h-4 mr-2" />
+            {tab.label}
+          </Button>
+        );
+      })}
     </div>
   );
 };
