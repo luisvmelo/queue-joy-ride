@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import QRCode from 'react-qr-code';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Copy, QrCode as QrCodeIcon, RefreshCw, Shield } from 'lucide-react';
+import { Download, Copy, QrCode as QrCodeIcon, RefreshCw, Shield, Share } from 'lucide-react';
 
 interface QRCodeGeneratorProps {
   restaurantId: string;
@@ -134,8 +133,8 @@ const QRCodeGenerator = ({ restaurantId, restaurantName }: QRCodeGeneratorProps)
                   onClick={downloadQRCode}
                   className="flex-1"
                 >
-                  <Download className="w-4 h-4 mr-2" />
-                  Baixar
+                  <Share className="w-4 h-4 mr-2" />
+                  Compartilhar
                 </Button>
                 <Button 
                   variant="outline" 
