@@ -247,8 +247,8 @@ const QRCodeGenerator = ({ restaurantId, restaurantName }: QRCodeGeneratorProps)
                   onClick={() => copyToClipboard(receptionCode, "O código")}
                   className="flex-1"
                 >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copiar Código
+                  <Share className="w-4 h-4 mr-2" />
+                  Compartilhar
                 </Button>
                 <Button 
                   variant="outline" 
