@@ -11,6 +11,7 @@ import EstabelecimentoDetalhes from "./pages/EstabelecimentoDetalhes";
 import QueuePage from "./pages/QueuePage";
 import NotFound from "./pages/NotFound";
 import ReceptionistDashboard from "./pages/ReceptionistDashboard";
+import ReceptionistLogin from "./pages/ReceptionistLogin";
 import ReceptionistAccess from "./pages/ReceptionistAccess";
 import AdminDashboard from "./pages/AdminDashboard";
 import Settings from "./pages/Settings";
@@ -37,6 +38,7 @@ const App = () => (
         <Route path="/estabelecimento/:restaurantId" element={<EstabelecimentoDetalhes />} />
         <Route path="/queue/:restaurantId" element={<QueuePage />} />
         <Route path="/receptionist" element={<ReceptionistDashboard />} />
+        <Route path="/receptionist-login" element={<ReceptionistLogin />} />
         <Route path="/receptionist-access/:restaurantId" element={<ReceptionistAccess />} />
         
         {/* Rotas protegidas */}
