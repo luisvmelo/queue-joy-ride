@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,12 +105,20 @@ const RestaurantSettings = ({ restaurantId }: RestaurantSettingsProps) => {
     setLoading(true);
 
     try {
+      // Criar o endereço completo a partir dos campos separados
+      const fullAddress = [formData.street, formData.city, formData.state, formData.zipcode]
+        .filter(Boolean)
+        .join(', ');
+
+      const updateData = {
+        ...formData,
+        address: fullAddress, // Atualizar também o campo address para compatibilidade
+        detailed_opening_hours: openingHours
+      };
+
       const { error } = await supabase
         .from("restaurants")
-        .update({
-          ...formData,
-          detailed_opening_hours: openingHours
-        })
+        .update(updateData)
         .eq("id", restaurantId);
 
       if (error) throw error;
@@ -118,6 +127,9 @@ const RestaurantSettings = ({ restaurantId }: RestaurantSettingsProps) => {
         title: "Sucesso",
         description: "Dados do restaurante atualizados com sucesso",
       });
+
+      // Recarregar os dados para confirmar a atualização
+      await loadRestaurantData();
     } catch (error) {
       console.error("Error updating restaurant:", error);
       toast({
