@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Users, Bug } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 
 const CheckIn = () => {
   const { restaurantId } = useParams();
@@ -15,29 +15,19 @@ const CheckIn = () => {
   
   const [restaurant, setRestaurant] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  const [showDebug, setShowDebug] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     partySize: "",
   });
 
-  // Função para adicionar logs visuais
-  const addDebugLog = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const logMessage = `[${timestamp}] ${message}`;
-    console.log(logMessage);
-    setDebugLogs(prev => [...prev.slice(-10), logMessage]); // Manter apenas os últimos 10 logs
-  };
-
   useEffect(() => {
-    addDebugLog('🎯 CheckIn component mounted');
-    addDebugLog(`📍 Restaurant ID: ${restaurantId}`);
-    addDebugLog(`🌐 Current URL: ${window.location.href}`);
+    console.log('CheckIn component mounted with restaurantId:', restaurantId);
+    console.log('Current URL:', window.location.href);
+    console.log('Current pathname:', window.location.pathname);
     
     if (!restaurantId) {
-      addDebugLog('❌ No restaurantId, redirecting to restaurants');
+      console.log('No restaurantId, redirecting to restaurants');
       navigate("/restaurants");
       return;
     }
@@ -46,7 +36,6 @@ const CheckIn = () => {
 
   const fetchRestaurant = async () => {
     try {
-      addDebugLog('🔄 Fetching restaurant data...');
       const { data, error } = await supabase
         .from('restaurants')
         .select('*')
@@ -55,10 +44,10 @@ const CheckIn = () => {
         .single();
 
       if (error) throw error;
-      addDebugLog(`✅ Restaurant fetched: ${data.name}`);
+      console.log('Restaurant fetched successfully:', data);
       setRestaurant(data);
     } catch (error: any) {
-      addDebugLog(`❌ Error fetching restaurant: ${error.message}`);
+      console.error('Error fetching restaurant:', error);
       toast({
         title: "Erro",
         description: "Restaurante não encontrado ou inativo",
@@ -82,12 +71,11 @@ const CheckIn = () => {
     e.preventDefault();
     if (!restaurantId) return;
 
-    addDebugLog('🚀 === FORM SUBMISSION STARTED ===');
-    addDebugLog(`📝 Form data: ${JSON.stringify(formData)}`);
+    alert('🚀 INICIANDO SUBMISSÃO DO FORMULÁRIO');
 
     // Validate inputs
     if (!formData.name.trim()) {
-      addDebugLog('❌ Validation failed: Name is required');
+      alert('❌ ERRO: Nome é obrigatório');
       toast({
         title: "Erro",
         description: "Nome é obrigatório",
@@ -97,7 +85,7 @@ const CheckIn = () => {
     }
 
     if (!validatePhone(formData.phone)) {
-      addDebugLog('❌ Validation failed: Invalid phone');
+      alert('❌ ERRO: Telefone inválido');
       toast({
         title: "Erro",
         description: "Telefone deve ter entre 10 e 15 dígitos",
@@ -108,7 +96,7 @@ const CheckIn = () => {
 
     const partySizeNum = parseInt(formData.partySize) || 0;
     if (partySizeNum < 1 || partySizeNum > 20) {
-      addDebugLog('❌ Validation failed: Invalid party size');
+      alert('❌ ERRO: Número de pessoas inválido');
       toast({
         title: "Erro",
         description: "Número de pessoas deve estar entre 1 e 20",
@@ -117,45 +105,39 @@ const CheckIn = () => {
       return;
     }
 
-    addDebugLog('✅ All validations passed');
+    alert('✅ VALIDAÇÕES OK - Prosseguindo...');
     setLoading(true);
 
     try {
       const sanitizedName = sanitizeInput(formData.name);
       const sanitizedPhone = formData.phone.replace(/[^\d+\-\s()]/g, '');
 
-      addDebugLog(`🧹 Sanitized data: name="${sanitizedName}", phone="${sanitizedPhone}", size=${partySizeNum}`);
+      alert(`📝 DADOS SANITIZADOS:\nNome: ${sanitizedName}\nTelefone: ${sanitizedPhone}\nPessoas: ${partySizeNum}`);
 
-      const rpcData = {
-        p_restaurant_id: restaurantId,
-        p_name: sanitizedName,
-        p_phone: sanitizedPhone,
-        p_party_size: partySizeNum,
-        p_notification_type: 'sms'
-      };
+      const { data, error } = await supabase
+        .rpc('create_customer_party', {
+          p_restaurant_id: restaurantId,
+          p_name: sanitizedName,
+          p_phone: sanitizedPhone,
+          p_party_size: partySizeNum,
+          p_notification_type: 'sms'
+        });
 
-      addDebugLog(`📡 Calling RPC with: ${JSON.stringify(rpcData)}`);
-
-      const { data, error } = await supabase.rpc('create_customer_party', rpcData);
-
-      addDebugLog(`📥 RPC Response - Data: ${JSON.stringify(data)}`);
-      addDebugLog(`📥 RPC Response - Error: ${JSON.stringify(error)}`);
+      alert(`📡 RESPOSTA DA RPC:\nData: ${JSON.stringify(data)}\nError: ${JSON.stringify(error)}`);
 
       if (error) {
-        addDebugLog(`❌ RPC Error: ${error.message}`);
+        alert(`❌ ERRO NA RPC: ${error.message}`);
         throw error;
       }
 
       if (data && data.length > 0) {
         const { party_id, queue_position } = data[0];
         
-        addDebugLog(`🎉 Party created! ID: ${party_id}, Position: ${queue_position}`);
+        alert(`🎉 PARTY CRIADA!\nID: ${party_id}\nPosição: ${queue_position}`);
         
         // Armazenar credenciais
         const phoneKey = `party_${party_id}_phone`;
         const nameKey = `party_${party_id}_name`;
-        
-        addDebugLog(`💾 Storing credentials with keys: ${phoneKey}, ${nameKey}`);
         
         localStorage.setItem(phoneKey, sanitizedPhone);
         localStorage.setItem(nameKey, sanitizedName);
@@ -164,11 +146,10 @@ const CheckIn = () => {
         const storedPhone = localStorage.getItem(phoneKey);
         const storedName = localStorage.getItem(nameKey);
         
-        addDebugLog(`🔍 Verification - Phone stored: ${storedPhone === sanitizedPhone ? '✅' : '❌'}`);
-        addDebugLog(`🔍 Verification - Name stored: ${storedName === sanitizedName ? '✅' : '❌'}`);
+        alert(`💾 CREDENCIAIS ARMAZENADAS:\nTelefone OK: ${storedPhone === sanitizedPhone ? 'SIM' : 'NÃO'}\nNome OK: ${storedName === sanitizedName ? 'SIM' : 'NÃO'}`);
 
         if (!storedPhone || !storedName || storedPhone !== sanitizedPhone || storedName !== sanitizedName) {
-          addDebugLog('❌ CRITICAL: Credentials not stored correctly!');
+          alert('❌ ERRO CRÍTICO: Credenciais não foram salvas corretamente!');
           throw new Error('Falha ao armazenar credenciais. Tente novamente.');
         }
 
@@ -179,51 +160,52 @@ const CheckIn = () => {
           duration: 3000
         });
 
-        // Redirecionamento
+        // Redirecionamento CORRIGIDO
         const statusUrl = `/status/${party_id}`;
-        addDebugLog(`🎯 Target URL: ${statusUrl}`);
-        addDebugLog(`🌐 Full URL will be: ${window.location.origin}${statusUrl}`);
+        const fullStatusUrl = `${window.location.origin}${statusUrl}`;
         
-        addDebugLog('🔄 Attempting React Router navigation...');
+        alert(`🎯 REDIRECIONAMENTO CORRIGIDO:\nURL Atual: ${window.location.href}\nURL Destino Relativa: ${statusUrl}\nURL Destino Completa: ${fullStatusUrl}`);
         
         try {
+          alert('🔄 Tentando navigate() com URL relativa...');
           navigate(statusUrl, { replace: true });
-          addDebugLog('✅ Navigate called successfully');
           
-          // Verificar após delay
+          // Aguardar mais tempo para verificar
           setTimeout(() => {
             const currentPath = window.location.pathname;
-            addDebugLog(`🔍 Current path after navigate: ${currentPath}`);
-            addDebugLog(`🔍 Expected path: ${statusUrl}`);
+            alert(`🔍 VERIFICAÇÃO PÓS-NAVIGATE:\nPath Atual: ${currentPath}\nPath Esperado: ${statusUrl}\nSucesso: ${currentPath === statusUrl ? 'SIM' : 'NÃO'}`);
             
             if (currentPath !== statusUrl) {
-              addDebugLog('⚠️ React Router failed, using window.location fallback');
-              window.location.href = statusUrl;
-            } else {
-              addDebugLog('🎉 Navigation successful!');
+              alert('⚠️ Navigate falhou, tentando window.location.href com URL completa...');
+              window.location.href = fullStatusUrl;
             }
-          }, 300);
+          }, 1000); // Aumentei para 1 segundo
           
         } catch (navigationError: any) {
-          addDebugLog(`❌ Navigation error: ${navigationError.message}`);
-          window.location.href = statusUrl;
+          alert(`❌ ERRO NA NAVEGAÇÃO: ${navigationError.message}\nUsando window.location.href...`);
+          window.location.href = fullStatusUrl;
         }
 
-        // Fallback final
+        // Fallback final mais agressivo
         setTimeout(() => {
           const currentPath = window.location.pathname;
           if (currentPath !== statusUrl) {
-            addDebugLog('🔄 Final fallback executing...');
-            window.location.replace(statusUrl);
+            alert('🚨 FALLBACK FINAL: Forçando redirecionamento...');
+            // Tentar múltiplas abordagens
+            try {
+              window.location.replace(fullStatusUrl);
+            } catch (e) {
+              window.location.assign(fullStatusUrl);
+            }
           }
-        }, 1000);
+        }, 2000); // 2 segundos para o fallback final
 
       } else {
-        addDebugLog('❌ No data returned from RPC');
+        alert('❌ ERRO: Nenhum dado retornado da RPC');
         throw new Error('Nenhum dado retornado da criação da party');
       }
     } catch (error: any) {
-      addDebugLog(`💥 ERROR: ${error.message}`);
+      alert(`💥 ERRO GERAL: ${error.message}`);
       toast({
         title: "Erro",
         description: error.message || "Erro ao entrar na fila",
@@ -232,6 +214,7 @@ const CheckIn = () => {
       });
     } finally {
       setLoading(false);
+      alert('🏁 PROCESSO FINALIZADO');
     }
   };
 
@@ -246,44 +229,13 @@ const CheckIn = () => {
     );
   }
 
+  console.log('=== RENDERING CHECKIN PAGE ===');
+  console.log('Restaurant:', restaurant?.name);
+  console.log('Current URL:', window.location.href);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 p-4">
       <div className="max-w-md mx-auto">
-        {/* Debug Toggle Button */}
-        <Button
-          onClick={() => setShowDebug(!showDebug)}
-          variant="outline"
-          size="sm"
-          className="mb-4 w-full"
-        >
-          <Bug className="w-4 h-4 mr-2" />
-          {showDebug ? 'Ocultar' : 'Mostrar'} Debug Logs
-        </Button>
-
-        {/* Debug Panel */}
-        {showDebug && (
-          <Card className="mb-4 bg-black text-green-400 text-xs">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">🐛 Debug Logs</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="max-h-40 overflow-y-auto font-mono">
-                {debugLogs.map((log, index) => (
-                  <div key={index} className="mb-1">{log}</div>
-                ))}
-              </div>
-              <Button
-                onClick={() => setDebugLogs([])}
-                variant="secondary"
-                size="sm"
-                className="mt-2 w-full"
-              >
-                Limpar Logs
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-2xl flex items-center justify-center gap-2">
