@@ -140,8 +140,8 @@ const RestaurantDetails = () => {
     return parts.join(', ') || 'Endereço não informado';
   };
 
-  const formatOpeningHours = (hours: any) => {
-    if (!hours) return 'Horários não informados';
+  const formatOpeningHours = (hours: any): string[] => {
+    if (!hours) return ['Horários não informados'];
     
     return daysOfWeek.map(day => {
       const dayHours = hours[day.key];

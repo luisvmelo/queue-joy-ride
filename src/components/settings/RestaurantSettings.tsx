@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,8 +86,8 @@ const RestaurantSettings = ({ restaurantId }: RestaurantSettingsProps) => {
         menu_url: data.menu_url || "",
       });
 
-      if (data.detailed_opening_hours) {
-        setOpeningHours(data.detailed_opening_hours);
+      if (data.detailed_opening_hours && typeof data.detailed_opening_hours === 'object') {
+        setOpeningHours(data.detailed_opening_hours as OpeningHours);
       }
     } catch (error) {
       console.error("Error loading restaurant data:", error);
