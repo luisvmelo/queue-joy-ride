@@ -23,18 +23,23 @@ const TurnNotificationModal = ({
   const [timeLeft, setTimeLeft] = useState(toleranceTimeLeft);
 
   useEffect(() => {
-    setTimeLeft(toleranceTimeLeft);
-  }, [toleranceTimeLeft]);
+    if (isOpen && !isNextInLine) {
+      // Para o modal "É Sua Vez!", iniciar com tempo de tolerância + 30 segundos
+      setTimeLeft(toleranceTimeLeft + 30);
+    } else {
+      setTimeLeft(toleranceTimeLeft);
+    }
+  }, [toleranceTimeLeft, isOpen, isNextInLine]);
 
   useEffect(() => {
-    if (!isOpen || timeLeft <= 0) return;
+    if (!isOpen || timeLeft <= 0 || isNextInLine) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isOpen, timeLeft]);
+  }, [isOpen, timeLeft, isNextInLine]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;

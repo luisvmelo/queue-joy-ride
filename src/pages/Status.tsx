@@ -572,8 +572,8 @@ const Status = () => {
         isOpen={turnModal}
         onConfirm={() => setTurnModal(false)}
         onCancel={() => setTurnModal(false)}
-        toleranceTimeLeft={toleranceLeft ?? (party.tolerance_minutes ?? 10) * 60}
-        restaurantName={party.restaurant_name ?? ""}
+        toleranceTimeLeft={(party?.tolerance_minutes ?? 10) * 60}
+        restaurantName={party?.restaurant_name ?? ""}
       />
 
       <TurnNotificationModal
@@ -581,7 +581,7 @@ const Status = () => {
         onConfirm={() => setNextModal(false)}
         onCancel={() => setNextModal(false)}
         toleranceTimeLeft={0}
-        restaurantName={party.restaurant_name ?? ""}
+        restaurantName={party?.restaurant_name ?? ""}
         isNextInLine={true}
       />
 
@@ -589,20 +589,20 @@ const Status = () => {
         isOpen={leaveModal}
         onCancel={() => setLeaveModal(false)}
         onConfirm={handleLeaveQueue}
-        restaurantName={party.restaurant_name ?? ""}
+        restaurantName={party?.restaurant_name ?? ""}
       />
 
       <ThankYouScreen
         isOpen={thanksOpen}
         onJoinAgain={() => navigate(`/check-in/${party.restaurant_id}`)}
-        restaurantName={party.restaurant_name ?? ""}
+        restaurantName={party?.restaurant_name ?? ""}
       />
 
       <NoShowScreen
         isOpen={noShowOpen}
         onRejoinQueue={handleRejoinQueue}
         newPosition={50}
-        restaurantName={party.restaurant_name ?? ""}
+        restaurantName={party?.restaurant_name ?? ""}
       />
     </div>
   );
