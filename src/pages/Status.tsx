@@ -69,6 +69,7 @@ const Status = () => {
   const hasNotifiedReady = useRef(false);
   const previousStatus = useRef<string | null>(null);
   const previousPosition = useRef<number | null>(null);
+  const isInitialLoad = useRef(true);
 
   /* ------------------------------------------------------------------------ */
   /*  Security: Get customer credentials from localStorage                    */
@@ -96,7 +97,7 @@ const Status = () => {
       .on('postgres_changes', 
         { event: 'UPDATE', schema: 'public', table: 'parties', filter: `id=eq.${id}` },
         (payload) => {
-          console.log('Party updated:', payload);
+          console.log('Party updated via realtime:', payload);
           fetchPartyData();
         }
       )
@@ -155,62 +156,68 @@ const Status = () => {
           restaurant_avg_seat_time_minutes: partyData.restaurant_avg_seat_time_minutes
         };
 
-        // Verificar mudanças de status para disparar popups
-        const currentStatus = formattedParty.status;
-        const currentPosition = formattedParty.queue_position;
+        // Verificar mudanças de status para disparar popups - APENAS depois do carregamento inicial
+        if (!isInitialLoad.current) {
+          const currentStatus = formattedParty.status;
+          const currentPosition = formattedParty.queue_position;
 
-        console.log('Current state:', { 
-          currentStatus, 
-          currentPosition, 
-          previousStatus: previousStatus.current, 
-          previousPosition: previousPosition.current,
-          hasNotifiedNext: hasNotifiedNext.current,
-          hasNotifiedReady: hasNotifiedReady.current
-        });
-
-        // Reset flags se status mudou para waiting
-        if (currentStatus === 'waiting' && previousStatus.current !== 'waiting') {
-          hasNotifiedNext.current = false;
-          hasNotifiedReady.current = false;
-          console.log('Reset notification flags - status changed to waiting');
-        }
-
-        // Popup "Você é o Próximo!" - quando vira posição 1 e ainda está waiting
-        if (currentPosition === 1 && 
-            currentStatus === 'waiting' && 
-            !hasNotifiedNext.current &&
-            (previousPosition.current !== 1 || previousStatus.current !== 'waiting')) {
-          console.log('Triggering next modal - position 1, status waiting');
-          setNextModal(true);
-          hasNotifiedNext.current = true;
-          playNotificationSound();
-          sendBrowserNotification("Você é o Próximo! 🎯", "Prepare-se! Você será chamado em breve.");
-          
-          toast({
-            title: "Você é o Próximo! 🎯",
-            description: "Prepare-se! Você será chamado em breve.",
+          console.log('Checking for notifications:', { 
+            currentStatus, 
+            currentPosition, 
+            previousStatus: previousStatus.current, 
+            previousPosition: previousPosition.current,
+            hasNotifiedNext: hasNotifiedNext.current,
+            hasNotifiedReady: hasNotifiedReady.current
           });
-        }
 
-        // Popup "É Sua Vez!" - quando status muda para ready
-        if (currentStatus === 'ready' && 
-            !hasNotifiedReady.current &&
-            previousStatus.current !== 'ready') {
-          console.log('Triggering turn modal - status ready');
-          setTurnModal(true);
-          hasNotifiedReady.current = true;
-          playNotificationSound();
-          sendBrowserNotification("Mesa Pronta! 🎉", "Sua mesa está pronta! Dirija-se ao restaurante.");
-          
-          toast({
-            title: "Mesa Pronta! 🎉",
-            description: "Sua mesa está pronta! Dirija-se ao restaurante.",
-          });
+          // Popup "Você é o Próximo!" - quando vira posição 1 e ainda está waiting
+          if (currentPosition === 1 && 
+              currentStatus === 'waiting' && 
+              !hasNotifiedNext.current &&
+              (previousPosition.current !== 1 || previousStatus.current !== currentStatus)) {
+            console.log('Triggering next modal - position 1, status waiting');
+            setNextModal(true);
+            hasNotifiedNext.current = true;
+            playNotificationSound();
+            sendBrowserNotification("Você é o Próximo! 🎯", "Prepare-se! Você será chamado em breve.");
+            
+            toast({
+              title: "Você é o Próximo! 🎯",
+              description: "Prepare-se! Você será chamado em breve.",
+            });
+          }
+
+          // Popup "É Sua Vez!" - quando status muda para ready
+          if (currentStatus === 'ready' && 
+              !hasNotifiedReady.current &&
+              previousStatus.current !== 'ready') {
+            console.log('Triggering turn modal - status ready');
+            setTurnModal(true);
+            hasNotifiedReady.current = true;
+            playNotificationSound();
+            sendBrowserNotification("Mesa Pronta! 🎉", "Sua mesa está pronta! Dirija-se ao restaurante.");
+            
+            toast({
+              title: "Mesa Pronta! 🎉",
+              description: "Sua mesa está pronta! Dirija-se ao restaurante.",
+            });
+          }
+
+          // Reset flags se status mudou para waiting e não é posição 1
+          if (currentStatus === 'waiting' && currentPosition !== 1 && previousStatus.current !== 'waiting') {
+            hasNotifiedNext.current = false;
+            hasNotifiedReady.current = false;
+            console.log('Reset notification flags - status changed to waiting, position not 1');
+          }
+        } else {
+          // Primeira carga - definir valores iniciais sem disparar notificações
+          isInitialLoad.current = false;
+          console.log('Initial load - setting baseline values');
         }
 
         // Atualizar refs
-        previousStatus.current = currentStatus;
-        previousPosition.current = currentPosition;
+        previousStatus.current = formattedParty.status;
+        previousPosition.current = formattedParty.queue_position;
 
         setParty(formattedParty);
 
