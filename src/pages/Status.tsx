@@ -46,6 +46,7 @@ interface Party {
   tolerance_minutes: number | null;
   joined_at: string | null;
   status: string | null;
+  notified_ready_at: string | null;
   restaurant: Restaurant | null;
   restaurant_id: string | null;
 }
@@ -207,6 +208,8 @@ const Status = () => {
         name: partyData.name,
         status: partyData.status,
         queue_position: partyData.queue_position,
+        notified_ready_at: partyData.notified_ready_at,
+        tolerance_minutes: partyData.tolerance_minutes,
         timestamp: new Date().toISOString()
       });
 
@@ -221,6 +224,7 @@ const Status = () => {
         tolerance_minutes: partyData.tolerance_minutes,
         joined_at: partyData.joined_at,
         status: partyData.status,
+        notified_ready_at: partyData.notified_ready_at,
         restaurant: {
           id: partyData.restaurant_id,
           name: partyData.restaurant_name,
@@ -312,24 +316,38 @@ const Status = () => {
   useEffect(() => {
     if (!party) return;
 
-    if (party.status === 'ready') {
-      // Get tolerance from party data (from restaurant config)
+    if (party.status === 'ready' && party.notified_ready_at) {
+      // Calculate time left based on notified_ready_at timestamp (same as receptionist)
       const toleranceMinutes = party.tolerance_minutes || 5; // From get_restaurant_queue function
-      const totalSeconds = (toleranceMinutes * 60) + 30; // Restaurant time + 30s safety margin
+      const totalToleranceSeconds = (toleranceMinutes * 60) + 30; // Restaurant time + 30s safety margin
       
-      console.log('⏰ Starting tolerance timer:', {
-        restaurantTolerance: toleranceMinutes,
-        totalSeconds,
-        formattedTime: `${Math.floor(totalSeconds / 60)}:${(totalSeconds % 60).toString().padStart(2, '0')}`
+      const notifiedTime = new Date(party.notified_ready_at).getTime();
+      const currentTime = Date.now();
+      const elapsedSeconds = Math.floor((currentTime - notifiedTime) / 1000);
+      const remainingSeconds = Math.max(0, totalToleranceSeconds - elapsedSeconds);
+      
+      console.log('⏰ Syncing tolerance timer with notified_ready_at:', {
+        notifiedAt: party.notified_ready_at,
+        toleranceMinutes,
+        totalToleranceSeconds,
+        elapsedSeconds,
+        remainingSeconds,
+        formattedRemaining: `${Math.floor(remainingSeconds / 60)}:${(remainingSeconds % 60).toString().padStart(2, '0')}`
       });
       
-      setToleranceTimeLeft(totalSeconds);
+      setToleranceTimeLeft(remainingSeconds);
       setIsToleranceActive(true);
+      
+      // If time already expired, trigger no-show immediately
+      if (remainingSeconds <= 0) {
+        console.log('⏰ Timer already expired, triggering no-show');
+        handleNoShow();
+      }
     } else {
       setToleranceTimeLeft(null);
       setIsToleranceActive(false);
     }
-  }, [party?.status, party?.tolerance_minutes]);
+  }, [party?.status, party?.notified_ready_at, party?.tolerance_minutes]);
 
   useEffect(() => {
     if (!isToleranceActive || toleranceTimeLeft === null || toleranceTimeLeft <= 0) return;
@@ -609,10 +627,13 @@ const Status = () => {
                 </div>
               ) : party.status === 'ready' ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center justify-center gap-2 text-lg">
+                  <div className="flex items-center justify-center gap-2 text-lg mb-2">
                     <Clock className="w-5 h-5 text-green-600" />
                     <span className="font-semibold text-green-800">🎉 Mesa pronta agora!</span>
                   </div>
+                  <p className="text-sm text-green-700 text-center">
+                    Dirija-se ao restaurante o quanto antes!
+                  </p>
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2 text-lg">
@@ -622,6 +643,12 @@ const Status = () => {
               )}
 
               {/* Timer de Tolerância */}
+              {console.log('🔍 Timer visibility check:', {
+                isToleranceActive,
+                toleranceTimeLeft,
+                shouldShow: isToleranceActive && toleranceTimeLeft !== null && toleranceTimeLeft > 0,
+                partyStatus: party.status
+              })}
               {isToleranceActive && toleranceTimeLeft !== null && toleranceTimeLeft > 0 && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <div className="text-center">

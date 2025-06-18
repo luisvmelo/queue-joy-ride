@@ -25,6 +25,16 @@ const ToleranceTimer = ({
       const now = Date.now();
       const remaining = Math.max(0, Math.floor((targetTime - now) / 1000));
       
+      console.log('🏪 Receptionist timer sync:', {
+        notifiedAt,
+        toleranceMinutes,
+        notifiedTime: new Date(notifiedTime).toISOString(),
+        targetTime: new Date(targetTime).toISOString(),
+        now: new Date(now).toISOString(),
+        remaining,
+        formattedRemaining: `${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`
+      });
+      
       setTimeLeft(remaining);
       
       if (remaining === 0 && !isExpired) {
