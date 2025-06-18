@@ -509,10 +509,12 @@ export type Database = {
           current_event: string | null
           default_tolerance_minutes: number
           description: string | null
+          detailed_opening_hours: Json | null
           email: string | null
           event_type: string | null
           id: string
           image_url: string | null
+          instagram_url: string | null
           is_active: boolean | null
           latitude: number | null
           logo_url: string | null
@@ -542,10 +544,12 @@ export type Database = {
           current_event?: string | null
           default_tolerance_minutes?: number
           description?: string | null
+          detailed_opening_hours?: Json | null
           email?: string | null
           event_type?: string | null
           id?: string
           image_url?: string | null
+          instagram_url?: string | null
           is_active?: boolean | null
           latitude?: number | null
           logo_url?: string | null
@@ -575,10 +579,12 @@ export type Database = {
           current_event?: string | null
           default_tolerance_minutes?: number
           description?: string | null
+          detailed_opening_hours?: Json | null
           email?: string | null
           event_type?: string | null
           id?: string
           image_url?: string | null
+          instagram_url?: string | null
           is_active?: boolean | null
           latitude?: number | null
           logo_url?: string | null
