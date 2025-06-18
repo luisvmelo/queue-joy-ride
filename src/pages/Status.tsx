@@ -105,18 +105,34 @@ const Status = () => {
       fetchPartyData();
     }, 100);
 
+    // Try real-time subscription first
     const channel = supabase
       .channel(`party_${partyId}`)
       .on('postgres_changes', 
         { event: 'UPDATE', schema: 'public', table: 'parties', filter: `id=eq.${partyId}` },
         (payload) => {
+          console.log('🔄 Real-time update received:', payload);
           fetchPartyData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Subscription status:', status);
+      });
+
+    // Fallback: Polling every 3 seconds if real-time fails
+    // Only poll when status is 'waiting' (stops when ready/seated/etc)
+    const pollingInterval = setInterval(() => {
+      if (!party || party.status === 'waiting') {
+        console.log('🔄 Polling for updates...');
+        fetchPartyData();
+      } else {
+        console.log('🛑 Stopping polling - status is:', party?.status);
+      }
+    }, 3000);
 
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollingInterval);
     };
   }, [partyId, navigate]);
 

@@ -30,7 +30,9 @@ export const useDashboardActions = (restaurantId: string | null, fetchQueueData:
       }
 
       // Chamar próximo e enviar notificação
+      console.log('📞 Calling next party:', nextParty);
       const result = await notifyCallNext(nextParty.id);
+      console.log('📊 Call next result:', result);
 
       if (result.success) {
         let description = `${nextParty.name} foi chamado`;
