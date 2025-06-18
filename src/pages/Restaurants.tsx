@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -120,6 +119,19 @@ const Restaurants = () => {
     return [...new Set(eventTypes)];
   };
 
+  const formatCategoryForDisplay = (category: string) => {
+    // Remove emojis and clean up the text
+    return category?.replace(/[^\w\s]/gi, '').trim() || category;
+  };
+
+  const formatEventTypeForDisplay = (eventType: string) => {
+    // Clean up event type text, convert underscores to spaces and capitalize
+    return eventType?.replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ') || eventType;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -211,7 +223,7 @@ const Restaurants = () => {
                       <SelectItem value="all">Todas as categorias</SelectItem>
                       {getUniqueCategories().map((category) => (
                         <SelectItem key={category} value={category}>
-                          {getCategoryEmoji(category)} {category}
+                          {formatCategoryForDisplay(category)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -230,7 +242,7 @@ const Restaurants = () => {
                       <SelectItem value="all">Todos os eventos</SelectItem>
                       {getUniqueEventTypes().map((eventType) => (
                         <SelectItem key={eventType} value={eventType}>
-                          🎉 {eventType}
+                          {formatEventTypeForDisplay(eventType)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -320,14 +332,14 @@ const Restaurants = () => {
                     {restaurant.current_event && (
                       <div className="mb-4">
                         <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                          🎉 {restaurant.current_event}
+                          🎉 {formatEventTypeForDisplay(restaurant.current_event)}
                         </span>
                       </div>
                     )}
                     
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500 capitalize">
-                        {categoryEmoji} {restaurant.category || 'Restaurante'}
+                        {categoryEmoji} {formatCategoryForDisplay(restaurant.category) || 'Restaurante'}
                       </span>
                       
                       <Button size="sm">
