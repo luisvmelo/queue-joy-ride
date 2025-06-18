@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -133,16 +132,15 @@ const CheckIn = () => {
         localStorage.setItem(`party_${party_id}_phone`, sanitizedPhone);
         localStorage.setItem(`party_${party_id}_name`, sanitizedName);
 
+        // Mostrar toast de sucesso
         toast({
           title: "Entrada na fila confirmada! 🎉",
           description: `Você está na posição ${queue_position} da fila.`,
         });
 
-        // Aguardar um pouco para o toast aparecer e então redirecionar
-        setTimeout(() => {
-          console.log('Redirecting to status page:', `/status/${party_id}`);
-          navigate(`/status/${party_id}`, { replace: true });
-        }, 1000);
+        // Redirecionar imediatamente - sem timeout
+        console.log('Redirecting to status page:', `/status/${party_id}`);
+        navigate(`/status/${party_id}`, { replace: true });
 
       } else {
         throw new Error('Nenhum dado retornado da criação da party');
