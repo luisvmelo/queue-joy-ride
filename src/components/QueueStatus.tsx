@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,14 @@ const QueueStatus = ({
   const currentParty = queueData.find(party => party.status === 'ready') || queueData[0];
   const waitingParties = queueData.filter(party => party.status === 'waiting');
   const nextParties = waitingParties.slice(0, 3);
+
+  // Helper function to format time in MM:SS
+  const formatWaitTime = (joinedAt: string) => {
+    const elapsed = Math.floor((Date.now() - new Date(joinedAt).getTime()) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     if (currentParty?.notified_ready_at) {
@@ -163,7 +172,7 @@ const QueueStatus = ({
                       {party.phone}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Na fila há {Math.floor((new Date().getTime() - new Date(party.joined_at).getTime()) / (1000 * 60))} min
+                      Na fila há {formatWaitTime(party.joined_at)}
                     </p>
                   </div>
                 </div>

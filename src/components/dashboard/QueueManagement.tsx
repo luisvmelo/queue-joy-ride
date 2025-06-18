@@ -37,6 +37,14 @@ const QueueManagement = ({
   const readyParties = queueData.filter(p => p.status === 'ready');
   const currentParty = readyParties[0];
 
+  // Helper function to format time in MM:SS
+  const formatWaitTime = (joinedAt: string) => {
+    const elapsed = Math.floor((Date.now() - new Date(joinedAt).getTime()) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   // Filter parties based on search query
   const filteredWaitingParties = waitingParties.filter(party =>
     party.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -88,7 +96,7 @@ const QueueManagement = ({
                   {waitingParties[0]?.name} - {waitingParties[0]?.party_size} pessoas
                 </p>
                 <p className="text-sm text-green-600">
-                  Aguardando há {Math.floor((Date.now() - new Date(waitingParties[0]?.joined_at).getTime()) / 60000)} minutos
+                  Aguardando há {formatWaitTime(waitingParties[0]?.joined_at)}
                 </p>
               </div>
               <Button
@@ -220,7 +228,7 @@ const QueueManagement = ({
                       {party.phone}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Há {Math.floor((Date.now() - new Date(party.joined_at).getTime()) / 60000)} min
+                      Há {formatWaitTime(party.joined_at)}
                     </p>
                   </div>
                 </div>
