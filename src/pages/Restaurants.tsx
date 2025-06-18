@@ -189,7 +189,7 @@ const Restaurants = () => {
                   </Select>
                 </div>
 
-                <div>
+                <div className="p-3 flex flex-col justify-start gap-2 h-auto\n">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tipo de Evento
                   </label>
@@ -230,7 +230,7 @@ const Restaurants = () => {
                       <img src={restaurant.image_url} alt={restaurant.name} className="w-full h-full object-cover" />
                     </div>}
                   
-                  <CardContent className="p-5 flex flex-col justify-between h-full px-[10px]">
+                  <CardContent className="p-5 flex flex-col justify-between h-full">
                     <div>
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="font-bold text-xl text-gray-900 leading-tight">
