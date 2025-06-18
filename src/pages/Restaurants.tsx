@@ -226,7 +226,7 @@ const Restaurants = () => {
             {filteredRestaurants.map(restaurant => {
           const queueStatus = getQueueStatus(restaurant.queue_size);
           const categoryEmoji = getCategoryEmoji(restaurant.category);
-          return <Card key={restaurant.id} className="cursor-pointer hover:shadow-lg transition-shadow min-h-[280px]" onClick={() => handleRestaurantClick(restaurant.id)}>
+          return <Card key={restaurant.id} className="cursor-pointer hover:shadow-lg transition-shadow min-h-[260px]" onClick={() => handleRestaurantClick(restaurant.id)}>
                   {restaurant.image_url && <div className="h-52 overflow-hidden">
                       <img src={restaurant.image_url} alt={restaurant.name} className="w-full h-full object-cover" />
                     </div>}
