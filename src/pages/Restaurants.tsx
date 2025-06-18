@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -317,7 +316,7 @@ const Restaurants = () => {
                         </div>
                       )}
                       
-                      <div className="flex items-center justify-between text-sm text-gray-600 mb-5">
+                      <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
                         <div className="flex items-center">
                           <Users className="w-4 h-4 mr-2" />
                           <span>{restaurant.queue_size} na fila</span>
@@ -332,7 +331,7 @@ const Restaurants = () => {
                       </div>
                       
                       {restaurant.current_event && (
-                        <div className="mb-5">
+                        <div className="mb-4">
                           <span className="inline-block bg-blue-100 text-blue-800 text-xs px-3 py-2 rounded-full">
                             🎉 {formatEventTypeForDisplay(restaurant.current_event)}
                           </span>
@@ -340,7 +339,7 @@ const Restaurants = () => {
                       )}
                     </div>
                     
-                    <div className="flex items-center justify-between mt-auto pt-4">
+                    <div className="flex items-center justify-between mt-2">
                       <span className="text-sm text-gray-500 capitalize flex items-center">
                         <span className="mr-2">{categoryEmoji}</span>
                         <span>{formatCategoryForDisplay(restaurant.category) || 'Restaurante'}</span>
