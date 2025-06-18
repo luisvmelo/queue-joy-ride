@@ -90,7 +90,7 @@ const Restaurants = () => {
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div>
+            <div className="text-center flex-1">
               <h1 className="text-2xl font-bold text-gray-900">Restaurantes</h1>
               <p className="text-gray-600">Encontre o melhor lugar para sua experiência</p>
             </div>
