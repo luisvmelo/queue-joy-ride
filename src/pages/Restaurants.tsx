@@ -189,7 +189,7 @@ const Restaurants = () => {
                   </Select>
                 </div>
 
-                <div className="p-3 flex flex-col justify-start gap-2 h-auto\n">
+                <div className="p-2 flex flex-col justify-start gap-1 h-auto max-h-[250px]">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tipo de Evento
                   </label>
