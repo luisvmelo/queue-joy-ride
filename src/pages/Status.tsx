@@ -5,8 +5,9 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, Clock, Users, MapPin, ExternalLink } from "lucide-react";
 
 import TurnNotificationModal from "@/components/TurnNotificationModal";
 import LeaveQueueConfirmation from "@/components/LeaveQueueConfirmation";
@@ -20,6 +21,13 @@ import { supabase } from "@/integrations/supabase/client";
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
 /* -------------------------------------------------------------------------- */
+interface Restaurant {
+  id: string;
+  name: string;
+  menu_url: string | null;
+  avg_seat_time_minutes: number | null;
+}
+
 interface Party {
   id: string;
   name: string;
@@ -31,10 +39,8 @@ interface Party {
   tolerance_minutes: number | null;
   joined_at: string | null;
   status: string | null;
+  restaurant: Restaurant | null;
   restaurant_id: string | null;
-  restaurant_name: string | null;
-  restaurant_menu_url: string | null;
-  restaurant_avg_seat_time_minutes: number | null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -77,6 +83,20 @@ const Status = () => {
   const getCustomerCredentials = () => {
     const phone = localStorage.getItem(`party_${id}_phone`);
     const name = localStorage.getItem(`party_${id}_name`);
+    
+    console.log('🔐 Getting customer credentials:', {
+      party_id: id,
+      phone: phone ? 'EXISTS' : 'NOT_FOUND',
+      name: name ? 'EXISTS' : 'NOT_FOUND',
+      phoneKey: `party_${id}_phone`,
+      nameKey: `party_${id}_name`
+    });
+    
+    // Logs para debug das chaves do localStorage
+    const allKeys = Object.keys(localStorage);
+    const partyKeys = allKeys.filter(key => key.startsWith('party_'));
+    console.log('🗃️ All party keys in localStorage:', partyKeys);
+    
     return { phone, name };
   };
 
@@ -84,26 +104,33 @@ const Status = () => {
   /*  Setup inicial                                                           */
   /* ------------------------------------------------------------------------ */
   useEffect(() => {
+    console.log('🎯 Status page useEffect triggered with ID:', id);
+    
     if (!id) {
+      console.log('❌ No ID in URL params, redirecting to home');
       navigate("/");
       return;
     }
 
-    fetchPartyData();
+    // Delay pequeno para garantir que o localStorage foi populado
+    setTimeout(() => {
+      fetchPartyData();
+    }, 100);
 
-    // Realtime
+    // Configurar realtime subscription
     const channel = supabase
       .channel(`party_${id}`)
       .on('postgres_changes', 
         { event: 'UPDATE', schema: 'public', table: 'parties', filter: `id=eq.${id}` },
         (payload) => {
-          console.log('Party updated via realtime:', payload);
+          console.log('🔄 Party updated via realtime:', payload);
           fetchPartyData();
         }
       )
       .subscribe();
 
     return () => {
+      console.log('🧹 Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [id, navigate]);
@@ -112,21 +139,66 @@ const Status = () => {
   /*  Secure fetch party data using security definer function                */
   /* ------------------------------------------------------------------------ */
   const fetchPartyData = async () => {
-    if (!id) return;
+    if (!id) {
+      console.log('❌ No party ID provided');
+      navigate("/");
+      return;
+    }
+
+    console.log('🔄 Fetching party data for ID:', id);
 
     const { phone, name } = getCustomerCredentials();
     
     if (!phone || !name) {
-      setAccessDenied(true);
-      setLoading(false);
+      console.log('❌ Missing credentials:', { phone: !!phone, name: !!name });
+      
+      // Dar mais tempo para verificar se as credenciais aparecerão
+      // (caso estejam sendo definidas assincronamente)
+      setTimeout(() => {
+        const { phone: retryPhone, name: retryName } = getCustomerCredentials();
+        if (!retryPhone || !retryName) {
+          console.log('❌ Credentials still missing after retry, denying access');
+          setAccessDenied(true);
+          setLoading(false);
+          
+          // Redirecionar para home após mostrar erro
+          setTimeout(() => {
+            toast({
+              title: "Acesso negado",
+              description: "Credenciais de acesso não encontradas. Escaneie o QR code novamente.",
+              variant: "destructive"
+            });
+            navigate("/");
+          }, 1000);
+          
+          return;
+        } else {
+          console.log('✅ Credentials found on retry, proceeding...');
+          // Recursivamente tentar novamente com as credenciais encontradas
+          fetchPartyData();
+        }
+      }, 1000);
       return;
     }
 
-    // Sanitize inputs to prevent XSS
+    // Sanitizar entradas para prevenir XSS
     const sanitizedPhone = phone.replace(/[^\d+\-\s()]/g, '');
     const sanitizedName = name.replace(/[<>"/]/g, '');
 
+    console.log('🧹 Sanitized credentials:', {
+      originalPhone: phone,
+      sanitizedPhone: sanitizedPhone,
+      originalName: name,
+      sanitizedName: sanitizedName
+    });
+
     try {
+      console.log('📡 Calling get_customer_party with:', {
+        party_uuid: id,
+        customer_phone: sanitizedPhone,
+        customer_name: sanitizedName
+      });
+
       const { data, error } = await supabase
         .rpc('get_customer_party', {
           party_uuid: id,
@@ -134,179 +206,99 @@ const Status = () => {
           customer_name: sanitizedName
         });
 
-      if (error) throw error;
+      console.log('📥 get_customer_party response:', { data, error });
 
-      if (data && data.length > 0) {
-        const partyData = data[0];
-        
-        const formattedParty: Party = {
-          id: partyData.id,
-          name: partyData.name,
-          phone: partyData.phone,
-          party_size: partyData.party_size,
-          queue_position: partyData.queue_position,
-          initial_position: partyData.initial_position,
-          estimated_wait_minutes: partyData.estimated_wait_minutes,
-          tolerance_minutes: partyData.tolerance_minutes,
-          joined_at: partyData.joined_at,
-          status: partyData.status,
-          restaurant_id: partyData.restaurant_id,
-          restaurant_name: partyData.restaurant_name,
-          restaurant_menu_url: partyData.restaurant_menu_url,
-          restaurant_avg_seat_time_minutes: partyData.restaurant_avg_seat_time_minutes
-        };
-
-        // Verificar mudanças de status para disparar popups - APENAS depois do carregamento inicial
-        if (!isInitialLoad.current) {
-          const currentStatus = formattedParty.status;
-          const currentPosition = formattedParty.queue_position;
-
-          console.log('Checking for notifications:', { 
-            currentStatus, 
-            currentPosition, 
-            previousStatus: previousStatus.current, 
-            previousPosition: previousPosition.current,
-            hasNotifiedNext: hasNotifiedNext.current,
-            hasNotifiedReady: hasNotifiedReady.current
-          });
-
-          // Popup "Você é o Próximo!" - quando vira posição 1 e ainda está waiting
-          if (currentPosition === 1 && 
-              currentStatus === 'waiting' && 
-              !hasNotifiedNext.current &&
-              (previousPosition.current !== 1 || previousStatus.current !== currentStatus)) {
-            console.log('Triggering next modal - position 1, status waiting');
-            setNextModal(true);
-            hasNotifiedNext.current = true;
-            playNotificationSound();
-            sendBrowserNotification("Você é o Próximo! 🎯", "Prepare-se! Você será chamado em breve.");
-            
-            toast({
-              title: "Você é o Próximo! 🎯",
-              description: "Prepare-se! Você será chamado em breve.",
-            });
-          }
-
-          // Popup "É Sua Vez!" - quando status muda para ready
-          if (currentStatus === 'ready' && 
-              !hasNotifiedReady.current &&
-              previousStatus.current !== 'ready') {
-            console.log('Triggering turn modal - status ready');
-            setTurnModal(true);
-            hasNotifiedReady.current = true;
-            playNotificationSound();
-            sendBrowserNotification("Mesa Pronta! 🎉", "Sua mesa está pronta! Dirija-se ao restaurante.");
-            
-            toast({
-              title: "Mesa Pronta! 🎉",
-              description: "Sua mesa está pronta! Dirija-se ao restaurante.",
-            });
-          }
-
-          // Reset flags se status mudou para waiting e não é posição 1
-          if (currentStatus === 'waiting' && currentPosition !== 1 && previousStatus.current !== 'waiting') {
-            hasNotifiedNext.current = false;
-            hasNotifiedReady.current = false;
-            console.log('Reset notification flags - status changed to waiting, position not 1');
-          }
-        } else {
-          // Primeira carga - definir valores iniciais sem disparar notificações
-          isInitialLoad.current = false;
-          console.log('Initial load - setting baseline values');
-        }
-
-        // Atualizar refs
-        previousStatus.current = formattedParty.status;
-        previousPosition.current = formattedParty.queue_position;
-
-        setParty(formattedParty);
-
-        // Calcular ETA melhorado
-        if (formattedParty.queue_position && formattedParty.restaurant_avg_seat_time_minutes) {
-          const eta = formattedParty.queue_position * formattedParty.restaurant_avg_seat_time_minutes;
-          setBetterEstimatedTime(eta);
-        }
-
-      } else {
-        setAccessDenied(true);
+      if (error) {
+        console.error('❌ Supabase RPC error:', error);
+        throw error;
       }
 
+      if (!data || data.length === 0) {
+        console.log('❌ No party found with provided credentials');
+        setAccessDenied(true);
+        setLoading(false);
+        
+        toast({
+          title: "Acesso negado",
+          description: "Não foi possível encontrar sua reserva. Verifique se você está usando o link correto.",
+          variant: "destructive"
+        });
+        
+        // Redirecionar para home após 3 segundos
+        setTimeout(() => navigate("/"), 3000);
+        return;
+      }
+
+      const partyData = data[0];
+      console.log('✅ Party data retrieved successfully:', partyData);
+
+      setParty({
+        id: partyData.id,
+        name: partyData.name,
+        phone: partyData.phone,
+        party_size: partyData.party_size,
+        queue_position: partyData.queue_position,
+        initial_position: partyData.initial_position,
+        estimated_wait_minutes: partyData.estimated_wait_minutes,
+        tolerance_minutes: partyData.tolerance_minutes,
+        joined_at: partyData.joined_at,
+        status: partyData.status,
+        restaurant: {
+          id: partyData.restaurant_id,
+          name: partyData.restaurant_name,
+          menu_url: partyData.restaurant_menu_url,
+          avg_seat_time_minutes: partyData.restaurant_avg_seat_time_minutes
+        },
+        restaurant_id: partyData.restaurant_id
+      });
+
+      setAccessDenied(false);
+      console.log('✅ Party state updated successfully');
+
     } catch (error: any) {
-      console.error('Error fetching party:', error);
+      console.error('💥 Error fetching party data:', error);
+      
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao buscar dados da fila",
+        variant: "destructive"
+      });
+      
       setAccessDenied(true);
+      
+      // Redirecionar para home em caso de erro
+      setTimeout(() => navigate("/"), 3000);
     } finally {
       setLoading(false);
     }
   };
 
   /* ------------------------------------------------------------------------ */
-  /*  Notificações                                                            */
+  /*  Better Time Estimation                                                  */
   /* ------------------------------------------------------------------------ */
-  const playNotificationSound = () => {
-    if (notificationsEnabled && audioRef.current) {
-      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
-    }
-  };
+  useEffect(() => {
+    if (!party) return;
 
-  const sendBrowserNotification = (title: string, body: string) => {
-    if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, {
-        body,
-        icon: '/favicon.ico',
-        requireInteraction: true
-      });
-    }
-  };
-
-  const requestNotificationPermission = async () => {
-    console.log('Requesting notification permission...');
-    
-    if (!('Notification' in window)) {
-      console.log('This browser does not support notifications');
-      toast({
-        title: "Notificações não suportadas",
-        description: "Seu navegador não suporta notificações.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const permission = await Notification.requestPermission();
-      console.log('Notification permission:', permission);
+    const calculateBetterEstimate = () => {
+      const avgTime = party.restaurant?.avg_seat_time_minutes || 45;
+      const position = party.queue_position || 0;
       
-      if (permission === 'granted') {
-        setNotificationsEnabled(true);
-        
-        // Enviar notificação de teste
-        new Notification("Notificações Ativadas! 🔔", {
-          body: "Você receberá avisos quando for sua vez na fila.",
-          icon: '/favicon.ico'
-        });
-        
-        toast({
-          title: "Notificações ativadas!",
-          description: "Você receberá avisos quando for sua vez na fila.",
-        });
-      } else {
-        toast({
-          title: "Permissão negada",
-          description: "Para receber notificações, permita no seu navegador.",
-          variant: "destructive"
-        });
+      if (position <= 0) {
+        setBetterEstimatedTime(0);
+        return;
       }
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      toast({
-        title: "Erro nas notificações",
-        description: "Não foi possível ativar as notificações.",
-        variant: "destructive"
-      });
-    }
-  };
+      
+      // Estimativa mais realista baseada na posição e tempo médio
+      const baseWait = position * avgTime;
+      const variance = Math.random() * 10 - 5; // ±5 min
+      setBetterEstimatedTime(Math.max(0, Math.round(baseWait + variance)));
+    };
+
+    calculateBetterEstimate();
+  }, [party]);
 
   /* ------------------------------------------------------------------------ */
-  /*  Cronômetros – tempo decorrido                                           */
+  /*  Elapsed time counter                                                    */
   /* ------------------------------------------------------------------------ */
   useEffect(() => {
     if (!party?.joined_at) return;
@@ -350,42 +342,66 @@ const Status = () => {
   }, [toleranceLeft]);
 
   /* ------------------------------------------------------------------------ */
-  /*  Secure handlers using new security definer functions                   */
+  /*  Notification Logic                                                      */
   /* ------------------------------------------------------------------------ */
-  const handleLeaveQueue = async () => {
-    if (!party) return;
-    
-    const { phone } = getCustomerCredentials();
-    if (!phone) {
-      toast({
-        title: "Erro de Segurança",
-        description: "Credenciais não encontradas",
-        variant: "destructive"
-      });
+  useEffect(() => {
+    if (!party || isInitialLoad.current) {
+      if (party) isInitialLoad.current = false;
       return;
     }
 
+    const currentStatus = party.status;
+    const currentPosition = party.queue_position;
+
+    // Next in line notification
+    if (currentPosition === 1 && previousPosition.current !== 1 && !hasNotifiedNext.current) {
+      setNextModal(true);
+      hasNotifiedNext.current = true;
+      playNotificationSound();
+    }
+
+    // Ready notification
+    if (currentStatus === 'ready' && previousStatus.current !== 'ready' && !hasNotifiedReady.current) {
+      setTurnModal(true);
+      hasNotifiedReady.current = true;
+      playNotificationSound();
+    }
+
+    previousStatus.current = currentStatus;
+    previousPosition.current = currentPosition;
+  }, [party?.status, party?.queue_position]);
+
+  /* ------------------------------------------------------------------------ */
+  /*  Handlers                                                                */
+  /* ------------------------------------------------------------------------ */
+  const handleLeaveQueue = async () => {
     try {
+      const { phone, name } = getCustomerCredentials();
+      
+      if (!phone || !name) {
+        toast({
+          title: "Erro",
+          description: "Credenciais de acesso não encontradas",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { data, error } = await supabase
         .rpc('update_customer_party_status', {
-          party_uuid: party.id,
+          party_uuid: id,
           customer_phone: phone,
           new_status: 'removed'
         });
 
       if (error) throw error;
 
-      if (data) {
-        setLeaveModal(false);
-        setThanksOpen(true);
-      } else {
-        throw new Error('Não foi possível sair da fila');
-      }
+      setLeaveModal(false);
+      setThanksOpen(true);
     } catch (error: any) {
-      console.error('Error leaving queue:', error);
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível sair da fila",
+        description: error.message || "Erro ao sair da fila",
         variant: "destructive"
       });
     }
@@ -408,6 +424,19 @@ const Status = () => {
     navigate(`/check-in/${party.restaurant_id}`);
   };
 
+  const playNotificationSound = () => {
+    if (audioRef.current && notificationsEnabled) {
+      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+    }
+  };
+
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      setNotificationsEnabled(permission === 'granted');
+    }
+  };
+
   /* ------------------------------------------------------------------------ */
   /*  Helpers                                                                 */
   /* ------------------------------------------------------------------------ */
@@ -416,179 +445,240 @@ const Status = () => {
     if (party.initial_position === 0) return 100;
     const current = party.queue_position ?? 0;
     const initial = party.initial_position;
-    return Math.max(0, Math.min(100, ((initial - current) / initial) * 100));
+    const completed = initial - current;
+    return Math.min(100, Math.max(0, (completed / initial) * 100));
   })();
 
-  const getStatusMessage = () => {
-    if (!party) return "";
-
-    switch (party.status) {
-      case 'waiting':
-        return party.queue_position === 1 
-          ? "Você é o próximo!" 
-          : `Posição ${party.queue_position} na fila`;
-      case 'next':
-        return "É a sua vez! 🎉";
-      case 'ready':
-        return "Mesa pronta! Dirija-se ao restaurante";
-      case 'seated':
-        return "Você já foi acomodado";
-      case 'removed':
-        return "Você saiu da fila";
-      case 'no_show':
-        return "Você foi marcado como ausente";
-      default:
-        return "Status desconhecido";
-    }
+  const formatTime = (minutes: number): string => {
+    if (minutes < 60) return `${minutes}min`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
   };
 
-  const getEstimatedTime = () => {
-    if (betterEstimatedTime !== null) return betterEstimatedTime;
-    if (party?.estimated_wait_minutes) return party.estimated_wait_minutes;
-    if (party?.queue_position && party.restaurant_avg_seat_time_minutes) {
-      return party.queue_position * party.restaurant_avg_seat_time_minutes;
-    }
-    return null;
+  const formatToleranceTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
   /* ------------------------------------------------------------------------ */
-  /*  Render                                                                  */
+  /*  Loading State                                                           */
   /* ------------------------------------------------------------------------ */
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Carregando status...</p>
+          <p className="text-gray-600">Carregando dados da fila...</p>
         </div>
       </div>
     );
   }
 
-  if (accessDenied || !party) {
+  /* ------------------------------------------------------------------------ */
+  /*  Access Denied State                                                     */
+  /* ------------------------------------------------------------------------ */
+  if (accessDenied) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-bold text-red-600 mb-4">Acesso Negado</h2>
-          <p className="text-gray-600 mb-4">
-            Você não tem permissão para acessar este party ou ele não foi encontrado.
-          </p>
-          <Button onClick={() => navigate("/")}>Voltar ao início</Button>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl text-red-600">Acesso Negado</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600">
+              Não foi possível verificar seu acesso a esta fila.
+            </p>
+            <p className="text-sm text-gray-500">
+              Certifique-se de que você está usando o link correto enviado pelo restaurante.
+            </p>
+            <Button 
+              onClick={() => navigate("/")} 
+              className="w-full"
+            >
+              Voltar ao Início
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  /* ------------------------------------------------------------------------ */
+  /*  No Party State                                                          */
+  /* ------------------------------------------------------------------------ */
+  if (!party) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Fila não encontrada</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600">
+              Não foi possível encontrar informações sobre sua posição na fila.
+            </p>
+            <Button 
+              onClick={() => navigate("/")} 
+              className="w-full"
+            >
+              Voltar ao Início
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /*  Main Render                                                             */
+  /* ------------------------------------------------------------------------ */
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 p-4">
-      {/* Audio element para notificações */}
-      <audio ref={audioRef} preload="auto">
-        <source src="/notification.mp3" type="audio/mpeg" />
-      </audio>
-
       <div className="max-w-md mx-auto">
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold mb-2">{party.restaurant_name}</h1>
-          <p className="text-gray-600">Olá, {party.name}!</p>
-        </div>
+        <Card className="mb-6">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl flex items-center justify-center gap-2">
+              <Users className="w-6 h-6" />
+              {party.restaurant?.name}
+            </CardTitle>
+            <CardDescription>
+              {party.name} • {party.party_size} {party.party_size === 1 ? 'pessoa' : 'pessoas'}
+            </CardDescription>
+          </CardHeader>
+        </Card>
 
-        {/* Status Card */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="text-center mb-4">
-            <h2 className="text-xl font-semibold mb-2">{getStatusMessage()}</h2>
-            <Progress value={progress} className="w-full mb-4" />
-          </div>
-
-          {/* Time Info */}
-          <div className="grid grid-cols-2 gap-4 text-center mb-4">
-            <div>
-              {party.joined_at && (
-                <TimeCounter 
-                  startTime={party.joined_at}
-                  label="Tempo na fila"
-                />
-              )}
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Tempo estimado</p>
-              <p className="text-lg font-semibold">
-                {getEstimatedTime() ? `~${getEstimatedTime()} min` : "Calculando..."}
-              </p>
-            </div>
-          </div>
-
-          {/* Tolerance Timer */}
-          {toleranceLeft !== null && toleranceLeft > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <div className="text-center">
-                <p className="text-sm text-red-600 mb-2">Tempo para comparecer:</p>
-                <TimeCounter 
-                  startTime={new Date(Date.now() - ((party.tolerance_minutes || 10) * 60 * 1000 - toleranceLeft * 1000)).toISOString()}
-                  label="para comparecer"
-                  className="text-red-700 font-bold" 
-                />
+        {/* Status Principal */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              
+              {/* Posição na Fila */}
+              <div>
+                <div className="text-4xl font-bold text-orange-600">
+                  {party.queue_position === 0 ? "Sua vez!" : party.queue_position || '—'}
+                </div>
+                <p className="text-gray-600">
+                  {party.queue_position === 0 ? "🎉 Mesa pronta!" : "Posição na fila"}
+                </p>
               </div>
-            </div>
-          )}
 
-          {/* Actions */}
-          <div className="space-y-2">
-            <Button
-              variant="outline"
-              onClick={requestNotificationPermission}
-              className="w-full"
-              disabled={notificationsEnabled}
-            >
-              {notificationsEnabled ? (
-                <>
-                  <Bell className="w-4 h-4 mr-2" />
-                  Notificações Ativadas
-                </>
-              ) : (
-                <>
-                  <BellOff className="w-4 h-4 mr-2" />
-                  Ativar Notificações
-                </>
+              {/* Progress Bar */}
+              {party.initial_position && party.initial_position > 0 && (
+                <div className="space-y-2">
+                  <Progress value={progress} className="h-3" />
+                  <p className="text-sm text-gray-500">
+                    {Math.round(progress)}% completo • 
+                    {party.initial_position - (party.queue_position || 0)} de {party.initial_position} atendidos
+                  </p>
+                </div>
               )}
-            </Button>
 
-            {party.restaurant_menu_url && (
-              <Button
-                variant="outline"
-                onClick={() => window.open(party.restaurant_menu_url!, '_blank')}
+              {/* Tempo Estimado */}
+              <div className="flex items-center justify-center gap-2 text-lg">
+                <Clock className="w-5 h-5 text-gray-500" />
+                <span>
+                  {party.queue_position === 0 
+                    ? "Mesa disponível agora!" 
+                    : betterEstimatedTime !== null 
+                      ? `~${formatTime(betterEstimatedTime)}`
+                      : "Calculando..."
+                  }
+                </span>
+              </div>
+
+              {/* Cronômetro de Tolerância */}
+              {toleranceLeft !== null && toleranceLeft > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="text-red-600 font-semibold">
+                    ⏰ Mesa reservada por: {formatToleranceTime(toleranceLeft)}
+                  </div>
+                  <p className="text-sm text-red-500 mt-1">
+                    Dirija-se ao restaurante o quanto antes
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Informações Adicionais */}
+        <Card className="mb-6">
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-600">
+                Na fila há {elapsedMinutes} {elapsedMinutes === 1 ? 'minuto' : 'minutos'}
+              </span>
+            </div>
+            
+            {party.restaurant?.menu_url && (
+              <Button 
+                variant="outline" 
                 className="w-full"
+                onClick={() => window.open(party.restaurant!.menu_url!, '_blank')}
               >
-                Ver Menu
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Ver Cardápio
               </Button>
             )}
+          </CardContent>
+        </Card>
 
-            <Button
-              variant="destructive"
-              onClick={() => setLeaveModal(true)}
-              className="w-full"
-            >
-              Sair da Fila
-            </Button>
-          </div>
+        {/* Controles */}
+        <div className="space-y-3">
+          <Button
+            variant="outline"
+            onClick={requestNotificationPermission}
+            className="w-full"
+            disabled={notificationsEnabled}
+          >
+            {notificationsEnabled ? (
+              <>
+                <Bell className="w-4 h-4 mr-2" />
+                Notificações Ativadas
+              </>
+            ) : (
+              <>
+                <BellOff className="w-4 h-4 mr-2" />
+                Ativar Notificações
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="destructive"
+            onClick={() => setLeaveModal(true)}
+            className="w-full"
+          >
+            Sair da Fila
+          </Button>
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Audio para notificações */}
+      <audio ref={audioRef} preload="auto">
+        <source src="/notification-sound.mp3" type="audio/mpeg" />
+        <source src="/notification-sound.wav" type="audio/wav" />
+      </audio>
+
+      {/* Modais */}
       <TurnNotificationModal
         isOpen={turnModal}
         onConfirm={() => setTurnModal(false)}
         onCancel={() => setTurnModal(false)}
-        toleranceTimeLeft={(party?.tolerance_minutes ?? 10) * 60}
-        restaurantName={party?.restaurant_name ?? ""}
+        restaurantName={party.restaurant?.name ?? ""}
+        toleranceTimeLeft={toleranceLeft ?? (party.tolerance_minutes ?? 10) * 60}
       />
 
       <TurnNotificationModal
         isOpen={nextModal}
         onConfirm={() => setNextModal(false)}
         onCancel={() => setNextModal(false)}
-        toleranceTimeLeft={0}
-        restaurantName={party?.restaurant_name ?? ""}
+        restaurantName={party.restaurant?.name ?? ""}
+        toleranceTimeLeft={toleranceLeft ?? (party.tolerance_minutes ?? 10) * 60}
         isNextInLine={true}
       />
 
@@ -596,20 +686,20 @@ const Status = () => {
         isOpen={leaveModal}
         onCancel={() => setLeaveModal(false)}
         onConfirm={handleLeaveQueue}
-        restaurantName={party?.restaurant_name ?? ""}
+        restaurantName={party.restaurant?.name ?? ""}
       />
 
       <ThankYouScreen
         isOpen={thanksOpen}
         onJoinAgain={() => navigate(`/check-in/${party.restaurant_id}`)}
-        restaurantName={party?.restaurant_name ?? ""}
+        restaurantName={party.restaurant?.name ?? ""}
       />
 
       <NoShowScreen
         isOpen={noShowOpen}
         onRejoinQueue={handleRejoinQueue}
-        newPosition={50}
-        restaurantName={party?.restaurant_name ?? ""}
+        newPosition={50} // Vai para o final da fila
+        restaurantName={party.restaurant?.name ?? ""}
       />
     </div>
   );

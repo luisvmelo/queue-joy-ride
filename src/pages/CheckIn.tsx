@@ -153,17 +153,26 @@ const CheckIn = () => {
         localStorage.setItem(phoneKey, sanitizedPhone);
         localStorage.setItem(nameKey, sanitizedName);
         
-        // Verificar se foi armazenado corretamente
+        // 🔍 VERIFICAÇÃO RIGOROSA das credenciais
         const storedPhone = localStorage.getItem(phoneKey);
         const storedName = localStorage.getItem(nameKey);
         console.log('=== VERIFICATION ===');
         console.log('Stored phone:', storedPhone);
         console.log('Stored name:', storedName);
+        console.log('Phone match:', storedPhone === sanitizedPhone);
+        console.log('Name match:', storedName === sanitizedName);
+
+        // ⚠️ VALIDAÇÃO CRÍTICA: Se as credenciais não foram salvas corretamente, não prosseguir
+        if (!storedPhone || !storedName || storedPhone !== sanitizedPhone || storedName !== sanitizedName) {
+          console.error('❌ CRITICAL: Credentials not stored correctly!');
+          throw new Error('Falha ao armazenar credenciais. Tente novamente.');
+        }
 
         // Mostrar toast de sucesso
         toast({
           title: "Entrada na fila confirmada! 🎉",
           description: `Você está na posição ${queue_position} da fila.`,
+          duration: 3000
         });
 
         // Construir URL de redirecionamento
@@ -172,22 +181,43 @@ const CheckIn = () => {
         console.log('Target URL:', statusUrl);
         console.log('Full URL will be:', window.location.origin + statusUrl);
         
-        // Usar navigate do React Router primeiro
-        console.log('Attempting navigate...');
-        navigate(statusUrl, { replace: true });
+        // 🚀 REDIRECIONAMENTO MELHORADO
+        console.log('🎯 Starting navigation sequence...');
         
-        // Fallback: forçar redirecionamento após um delay curto
-        setTimeout(() => {
-          console.log('Fallback redirect executing...');
-          console.log('Current location before fallback:', window.location.href);
+        // Primeira tentativa: React Router navigate
+        try {
+          console.log('Attempting React Router navigate...');
+          navigate(statusUrl, { replace: true });
           
-          if (!window.location.pathname.includes('/status/')) {
-            console.log('Navigate failed, using window.location');
-            window.location.href = statusUrl;
-          } else {
-            console.log('Navigate succeeded, already on status page');
+          // Aguardar um pouco para verificar se o navigate funcionou
+          setTimeout(() => {
+            console.log('Checking navigation result...');
+            console.log('Current pathname:', window.location.pathname);
+            console.log('Expected pathname:', statusUrl);
+            
+            // Se não redirecionou corretamente, usar fallback
+            if (window.location.pathname !== statusUrl) {
+              console.log('❌ React Router failed, using window.location fallback');
+              window.location.href = statusUrl;
+            } else {
+              console.log('✅ React Router navigation successful!');
+            }
+          }, 300);
+          
+        } catch (navigationError) {
+          console.error('❌ Navigation error:', navigationError);
+          // Fallback imediato em caso de erro
+          window.location.href = statusUrl;
+        }
+
+        // 🛡️ FALLBACK FINAL: Garantir redirecionamento após 1 segundo
+        setTimeout(() => {
+          if (window.location.pathname !== statusUrl) {
+            console.log('🔄 Final fallback executing...');
+            console.log('Current location before final fallback:', window.location.href);
+            window.location.replace(statusUrl);
           }
-        }, 500);
+        }, 1000);
 
       } else {
         throw new Error('Nenhum dado retornado da criação da party');
@@ -197,7 +227,8 @@ const CheckIn = () => {
       toast({
         title: "Erro",
         description: error.message || "Erro ao entrar na fila",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 5000
       });
     } finally {
       setLoading(false);
