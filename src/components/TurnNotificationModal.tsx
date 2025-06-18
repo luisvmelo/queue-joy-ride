@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Bell } from "lucide-react";
 
@@ -21,15 +21,14 @@ const TurnNotificationModal = ({
   isNextInLine = false 
 }: TurnNotificationModalProps) => {
   const [timeLeft, setTimeLeft] = useState(toleranceTimeLeft);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    if (isOpen && !isNextInLine) {
-      // Para o modal "É Sua Vez!", iniciar com tempo de tolerância + 30 segundos
-      setTimeLeft(toleranceTimeLeft + 30);
-    } else {
-      setTimeLeft(toleranceTimeLeft);
+    // Simple vibration when modal opens
+    if (isOpen && 'vibrate' in navigator) {
+      navigator.vibrate([300, 100, 300, 100, 300]);
     }
-  }, [toleranceTimeLeft, isOpen, isNextInLine]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || timeLeft <= 0 || isNextInLine) return;
@@ -47,8 +46,8 @@ const TurnNotificationModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center relative animate-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+      <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center relative animate-in slide-in-from-bottom zoom-in duration-500 shadow-2xl border-4 border-orange-200">
         <button
           onClick={onCancel}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
@@ -58,13 +57,13 @@ const TurnNotificationModal = ({
 
         <div className="space-y-6">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
-              <Bell className="w-8 h-8 text-orange-600" />
+            <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center animate-pulse shadow-lg">
+              <Bell className="w-10 h-10 text-orange-600 animate-bounce" />
             </div>
           </div>
 
-          <h1 className="text-3xl font-bold text-black">
-            {isNextInLine ? "Você é o Próximo!" : "É Sua Vez!"}
+          <h1 className={`text-4xl font-bold ${isNextInLine ? 'text-blue-600' : 'text-orange-600'} animate-pulse`}>
+            {isNextInLine ? "🔔 Você é o Próximo!" : "🎉 É Sua Vez!"}
           </h1>
           
           <p className="text-lg text-gray-700">
@@ -75,19 +74,10 @@ const TurnNotificationModal = ({
           </p>
 
           {!isNextInLine && (
-            <div className="flex justify-center space-x-6">
-              <div className="bg-gray-100 rounded-xl p-4 min-w-[80px]">
-                <div className="text-3xl font-bold text-black">
-                  {minutes.toString().padStart(2, '0')}
-                </div>
-                <div className="text-sm text-gray-600">Minutos</div>
-              </div>
-              <div className="bg-gray-100 rounded-xl p-4 min-w-[80px]">
-                <div className="text-3xl font-bold text-black">
-                  {seconds.toString().padStart(2, '0')}
-                </div>
-                <div className="text-sm text-gray-600">Segundos</div>
-              </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <p className="text-orange-700 text-center">
+                📍 Dirija-se ao restaurante agora! Você tem tempo limitado para chegar.
+              </p>
             </div>
           )}
 
@@ -107,6 +97,11 @@ const TurnNotificationModal = ({
             </button>
           </div>
         </div>
+        
+        {/* Audio for modal notification */}
+        <audio ref={audioRef} preload="auto">
+          <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTiR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTiR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTiR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTiR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTiR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTiR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTiR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTiR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTiR1/L" type="audio/wav" />
+        </audio>
       </div>
     </div>
   );

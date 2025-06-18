@@ -107,30 +107,37 @@ export const notifyCustomer = async (
   }
 };
 
-// 📞 Função para chamar próximo cliente
+// 📞 Função para chamar próximo cliente (mudança de status para 'ready')
 export const handleCallNext = async (partyId: string) => {
   try {
-    // Atualizar status no banco
-    const { error } = await supabase
+    console.log('🔄 Updating party status to ready for partyId:', partyId);
+    
+    // Atualizar status no banco para 'ready' (mesa pronta)
+    const { data, error } = await supabase
       .from('parties')
       .update({ 
-        status: 'next',
-        notified_next_at: new Date().toISOString()
+        status: 'ready',
+        notified_ready_at: new Date().toISOString()
       })
-      .eq('id', partyId);
+      .eq('id', partyId)
+      .select('id, status, name');
 
     if (error) {
-      console.error('Erro ao atualizar status:', error);
+      console.error('❌ Erro ao atualizar status:', error);
       return { success: false, notificationSent: false };
     }
 
+    console.log('✅ Party status updated successfully:', data);
+
     // Enviar notificação
-    const result = await notifyCustomer(partyId, 'next');
+    const result = await notifyCustomer(partyId, 'ready');
+    
+    console.log('📱 Notification result:', result);
     
     return result;
 
   } catch (error) {
-    console.error('Erro ao chamar próximo:', error);
+    console.error('❌ Erro ao chamar próximo:', error);
     return { success: false, notificationSent: false, method: 'error' };
   }
 };

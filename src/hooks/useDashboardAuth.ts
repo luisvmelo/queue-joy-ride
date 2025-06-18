@@ -32,11 +32,15 @@ export const useDashboardAuth = () => {
       setUser(session.user);
 
       // Use the new security definer function to get user's restaurant
+      console.log('🔐 Getting user restaurant IDs for user:', session.user.id);
+      
       const { data: restaurantIds, error: restaurantError } = await supabase
         .rpc('get_user_restaurant_ids');
 
+      console.log('🏪 Restaurant IDs result:', { restaurantIds, restaurantError });
+
       if (restaurantError) {
-        console.error('Error getting user restaurant:', restaurantError);
+        console.error('❌ Error getting user restaurant:', restaurantError);
         toast({
           title: "Erro de acesso",
           description: "Não foi possível encontrar seu restaurante",
@@ -47,6 +51,7 @@ export const useDashboardAuth = () => {
       }
 
       if (!restaurantIds || restaurantIds.length === 0) {
+        console.log('❌ No restaurant IDs found for user');
         toast({
           title: "Acesso negado",
           description: "Você não tem permissão para acessar este dashboard",
@@ -57,7 +62,9 @@ export const useDashboardAuth = () => {
       }
 
       // Use the first restaurant ID found
-      setRestaurantId(restaurantIds[0].restaurant_id);
+      const selectedRestaurantId = restaurantIds[0].restaurant_id;
+      console.log('✅ Using restaurant ID:', selectedRestaurantId);
+      setRestaurantId(selectedRestaurantId);
     } catch (error) {
       console.error('Authentication error:', error);
       toast({

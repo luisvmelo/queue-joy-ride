@@ -117,12 +117,73 @@ export const useDashboardData = (restaurantId: string | null, user: any) => {
     if (!restaurantId) return;
 
     try {
+      console.log('🔄 Fetching queue data for restaurant:', restaurantId);
+      console.log('⏰ Timestamp:', new Date().toISOString());
+      
+      // Try RPC function first
+      console.log('📞 Calling get_restaurant_queue RPC...');
       const { data, error } = await supabase.rpc('get_restaurant_queue', {
         restaurant_uuid: restaurantId
       });
 
-      if (error) throw error;
+      console.log('📊 RPC Result:', { data, error, dataLength: data?.length });
+
+      if (error) {
+        console.error('❌ RPC function error details:', error);
+        console.log('🔄 Falling back to direct query...');
+        
+        // Fallback to direct query if RPC function fails
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('parties')
+          .select(`
+            id,
+            name,
+            phone,
+            party_size,
+            status,
+            queue_position,
+            joined_at,
+            notified_ready_at,
+            restaurants!inner(tolerance_minutes)
+          `)
+          .eq('restaurant_id', restaurantId)
+          .in('status', ['waiting', 'next', 'ready'])
+          .order('queue_position', { ascending: true });
+          
+        if (fallbackError) {
+          console.error('❌ Fallback query error:', fallbackError);
+          throw fallbackError;
+        }
+        
+        console.log('✅ Fallback data fetched:', fallbackData);
+        
+        // Transform fallback data to match RPC function format
+        const transformedData = (fallbackData || []).map(party => ({
+          party_id: party.id,
+          name: party.name,
+          phone: party.phone,
+          party_size: party.party_size,
+          status: party.status,
+          queue_position: party.queue_position,
+          joined_at: party.joined_at,
+          notified_ready_at: party.notified_ready_at,
+          tolerance_minutes: party.restaurants.tolerance_minutes
+        }));
+        
+        setQueueData(transformedData as QueueParty[]);
+        const queueParties = transformedData as QueueParty[];
+        
+        // Continue with the rest of the logic using fallback data
+        const waitingParties = queueParties.filter(p => p.status === 'waiting');
+        const readyParties = queueParties.filter(p => p.status === 'ready');
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        return; // Exit early since we used fallback
+      }
       
+      console.log('✅ RPC data fetched:', data);
       const queueParties = (data || []) as QueueParty[];
       setQueueData(queueParties);
 

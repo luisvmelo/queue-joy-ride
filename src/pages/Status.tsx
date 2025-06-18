@@ -7,7 +7,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Bell, BellOff, Clock, Users, MapPin, ExternalLink } from "lucide-react";
+import { Clock, Users, MapPin, ExternalLink } from "lucide-react";
+
+// Extend Window interface for webkit audio context
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
 
 import TurnNotificationModal from "@/components/TurnNotificationModal";
 import LeaveQueueConfirmation from "@/components/LeaveQueueConfirmation";
@@ -54,13 +61,14 @@ const Status = () => {
   /* state ------------------------------------------------------------------ */
   const [party, setParty] = useState<Party | null>(null);
   const [loading, setLoading] = useState(true);
-  const [betterEstimatedTime, setBetterEstimatedTime] = useState<number | null>(null);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [waitTimeMinutes, setWaitTimeMinutes] = useState<number>(0);
+  const [waitTimeSeconds, setWaitTimeSeconds] = useState<number>(0);
+  const [toleranceTimeLeft, setToleranceTimeLeft] = useState<number | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
 
-  /** cronômetro da tolerância (segundos) */
-  const [toleranceLeft, setToleranceLeft] = useState<number | null>(null);
+  /** estado de timer ativo */
+  const [isToleranceActive, setIsToleranceActive] = useState(false);
 
   /* modais */
   const [turnModal, setTurnModal] = useState(false);
@@ -69,12 +77,8 @@ const Status = () => {
   const [thanksOpen, setThanksOpen] = useState(false);
   const [noShowOpen, setNoShowOpen] = useState(false);
 
-  /* refs para controle de notificações */
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const hasNotifiedNext = useRef(false);
-  const hasNotifiedReady = useRef(false);
+  /* refs para controle de estado */
   const previousStatus = useRef<string | null>(null);
-  const previousPosition = useRef<number | null>(null);
   const isInitialLoad = useRef(true);
 
   /* ------------------------------------------------------------------------ */
@@ -94,6 +98,8 @@ const Status = () => {
       navigate("/");
       return;
     }
+
+    // Simplified initialization without notifications
 
     setTimeout(() => {
       fetchPartyData();
@@ -180,6 +186,14 @@ const Status = () => {
 
       const partyData = data[0];
 
+      console.log('📊 Fetched party data:', {
+        id: partyData.id,
+        name: partyData.name,
+        status: partyData.status,
+        queue_position: partyData.queue_position,
+        timestamp: new Date().toISOString()
+      });
+
       setParty({
         id: partyData.id,
         name: partyData.name,
@@ -217,28 +231,50 @@ const Status = () => {
   };
 
   /* ------------------------------------------------------------------------ */
-  /*  Better Time Estimation                                                  */
+  /*  Wait Time Countdown (when waiting in queue)                            */
   /* ------------------------------------------------------------------------ */
   useEffect(() => {
-    if (!party) return;
+    if (!party || party.status === 'ready') return;
 
-    const calculateBetterEstimate = () => {
+    const calculateWaitTime = () => {
       const avgTime = party.restaurant?.avg_seat_time_minutes || 45;
       const position = party.queue_position || 0;
       
       if (position <= 0) {
-        setBetterEstimatedTime(0);
+        setWaitTimeMinutes(0);
+        setWaitTimeSeconds(0);
         return;
       }
       
-      // Estimativa mais realista baseada na posição e tempo médio
-      const baseWait = position * avgTime;
-      const variance = Math.random() * 10 - 5; // ±5 min
-      setBetterEstimatedTime(Math.max(0, Math.round(baseWait + variance)));
+      // Calculate estimated wait time in minutes
+      const estimatedMinutes = position * avgTime;
+      setWaitTimeMinutes(Math.floor(estimatedMinutes));
+      setWaitTimeSeconds(0);
     };
 
-    calculateBetterEstimate();
+    calculateWaitTime();
   }, [party]);
+
+  /* ------------------------------------------------------------------------ */
+  /*  Wait Time Countdown Timer                                               */
+  /* ------------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!party || party.status === 'ready' || waitTimeMinutes <= 0) return;
+
+    const interval = setInterval(() => {
+      setWaitTimeSeconds(prev => {
+        if (prev > 0) {
+          return prev - 1;
+        } else if (waitTimeMinutes > 0) {
+          setWaitTimeMinutes(prev => prev - 1);
+          return 59;
+        }
+        return 0;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [waitTimeMinutes, waitTimeSeconds, party?.status]);
 
   /* ------------------------------------------------------------------------ */
   /*  Elapsed time counter                                                    */
@@ -255,24 +291,28 @@ const Status = () => {
   }, [party?.joined_at]);
 
   /* ------------------------------------------------------------------------ */
-  /*  Tolerância – inicia contagem quando status é ready                      */
+  /*  Tolerance Timer (when status is ready)                                 */
   /* ------------------------------------------------------------------------ */
   useEffect(() => {
     if (!party) return;
 
-    if (party.status === 'ready' || party.queue_position === 0) {
-      const toleranceMinutes = party.tolerance_minutes || 10;
-      setToleranceLeft(toleranceMinutes * 60);
+    if (party.status === 'ready') {
+      // Start tolerance timer: restaurant tolerance + 30 seconds
+      const toleranceMinutes = party.restaurant?.tolerance_minutes || 10;
+      const totalSeconds = (toleranceMinutes * 60) + 30;
+      setToleranceTimeLeft(totalSeconds);
+      setIsToleranceActive(true);
     } else {
-      setToleranceLeft(null);
+      setToleranceTimeLeft(null);
+      setIsToleranceActive(false);
     }
-  }, [party?.status, party?.queue_position, party?.tolerance_minutes]);
+  }, [party?.status, party?.restaurant?.tolerance_minutes]);
 
   useEffect(() => {
-    if (toleranceLeft === null || toleranceLeft <= 0) return;
+    if (!isToleranceActive || toleranceTimeLeft === null || toleranceTimeLeft <= 0) return;
 
     const interval = setInterval(() => {
-      setToleranceLeft((prev) => {
+      setToleranceTimeLeft((prev) => {
         if (prev === null || prev <= 1) {
           handleNoShow();
           return 0;
@@ -282,10 +322,10 @@ const Status = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [toleranceLeft]);
+  }, [toleranceTimeLeft, isToleranceActive]);
 
   /* ------------------------------------------------------------------------ */
-  /*  Notification Logic                                                      */
+  /*  Status Change Detection                                                 */
   /* ------------------------------------------------------------------------ */
   useEffect(() => {
     if (!party || isInitialLoad.current) {
@@ -294,25 +334,28 @@ const Status = () => {
     }
 
     const currentStatus = party.status;
-    const currentPosition = party.queue_position;
 
-    // Next in line notification
-    if (currentPosition === 1 && previousPosition.current !== 1 && !hasNotifiedNext.current) {
-      setNextModal(true);
-      hasNotifiedNext.current = true;
-      playNotificationSound();
-    }
+    // Debug logging
+    console.log('🔎 Status check:', {
+      currentStatus,
+      previousStatus: previousStatus.current,
+    });
 
-    // Ready notification
-    if (currentStatus === 'ready' && previousStatus.current !== 'ready' && !hasNotifiedReady.current) {
+    // Ready notification - when receptionist calls you
+    if (currentStatus === 'ready' && previousStatus.current !== 'ready') {
+      console.log('🎉 Your turn! Status changed to ready');
       setTurnModal(true);
-      hasNotifiedReady.current = true;
-      playNotificationSound();
+      
+      // Show prominent toast notification
+      toast({
+        title: "🎉 É sua vez!",
+        description: `Sua mesa no ${party.restaurant?.name || 'restaurante'} está pronta! Dirija-se ao local.`,
+        duration: 10000,
+      });
     }
 
     previousStatus.current = currentStatus;
-    previousPosition.current = currentPosition;
-  }, [party?.status, party?.queue_position]);
+  }, [party?.status]);
 
   /* ------------------------------------------------------------------------ */
   /*  Handlers                                                                */
@@ -354,7 +397,24 @@ const Status = () => {
     if (!party) return;
     
     try {
-      await supabase.rpc('mark_party_no_show', { party_uuid: party.id });
+      console.log('⏰ Timeout reached - marking party as no-show:', party.id);
+      
+      // Update party status to no_show and set removed_at
+      const { error } = await supabase
+        .from('parties')
+        .update({ 
+          status: 'no_show',
+          removed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', party.id);
+
+      if (error) {
+        console.error('Error marking no-show:', error);
+        return;
+      }
+
+      console.log('✅ Party marked as no-show successfully');
       setNoShowOpen(true);
     } catch (error) {
       console.error('Erro ao processar no-show:', error);
@@ -367,18 +427,7 @@ const Status = () => {
     navigate(`/check-in/${party.restaurant_id}`);
   };
 
-  const playNotificationSound = () => {
-    if (audioRef.current && notificationsEnabled) {
-      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
-    }
-  };
-
-  const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      setNotificationsEnabled(permission === 'granted');
-    }
-  };
+  // Removed notification functions - keeping only SMS/WhatsApp
 
   /* ------------------------------------------------------------------------ */
   /*  Helpers                                                                 */
@@ -392,17 +441,21 @@ const Status = () => {
     return Math.min(100, Math.max(0, (completed / initial) * 100));
   })();
 
-  const formatTime = (minutes: number): string => {
+  const formatEstimatedTime = (minutes: number): string => {
     if (minutes < 60) return `${minutes}min`;
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
   };
 
-  const formatToleranceTime = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  const formatTime = (totalSeconds: number): string => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const formatWaitTime = (): string => {
+    return `${waitTimeMinutes}:${waitTimeSeconds.toString().padStart(2, '0')}`;
   };
 
   /* ------------------------------------------------------------------------ */
@@ -519,28 +572,46 @@ const Status = () => {
                 </div>
               )}
 
-              {/* Tempo Estimado */}
-              <div className="flex items-center justify-center gap-2 text-lg">
-                <Clock className="w-5 h-5 text-gray-500" />
-                <span>
-                  {party.queue_position === 0 
-                    ? "Mesa disponível agora!" 
-                    : betterEstimatedTime !== null 
-                      ? `~${formatTime(betterEstimatedTime)}`
-                      : "Calculando..."
-                  }
-                </span>
-              </div>
-
-              {/* Cronômetro de Tolerância */}
-              {toleranceLeft !== null && toleranceLeft > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="text-red-600 font-semibold">
-                    ⏰ Mesa reservada por: {formatToleranceTime(toleranceLeft)}
+              {/* Tempo de Espera / Status */}
+              {party.status === 'waiting' && waitTimeMinutes > 0 ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-center gap-2 text-lg mb-2">
+                    <Clock className="w-5 h-5 text-blue-600" />
+                    <span className="font-semibold text-blue-800">Tempo estimado de espera:</span>
                   </div>
-                  <p className="text-sm text-red-500 mt-1">
-                    Dirija-se ao restaurante o quanto antes
-                  </p>
+                  <div className="text-3xl font-bold text-blue-600 text-center">
+                    {formatWaitTime()}
+                  </div>
+                  <p className="text-sm text-blue-600 text-center mt-1">minutos:segundos</p>
+                </div>
+              ) : party.status === 'ready' ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-center gap-2 text-lg">
+                    <Clock className="w-5 h-5 text-green-600" />
+                    <span className="font-semibold text-green-800">🎉 Mesa pronta agora!</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 text-lg">
+                  <Clock className="w-5 h-5 text-gray-500" />
+                  <span>Aguardando atualização...</span>
+                </div>
+              )}
+
+              {/* Timer de Tolerância */}
+              {isToleranceActive && toleranceTimeLeft !== null && toleranceTimeLeft > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="text-center">
+                    <div className="text-red-600 font-semibold mb-2">
+                      ⏰ Tempo para chegar ao restaurante:
+                    </div>
+                    <div className="text-4xl font-bold text-red-600">
+                      {formatTime(toleranceTimeLeft)}
+                    </div>
+                    <p className="text-sm text-red-500 mt-2">
+                      Dirija-se ao restaurante agora! Se não chegar a tempo, será removido da fila.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -572,24 +643,6 @@ const Status = () => {
 
         {/* Controles */}
         <div className="space-y-3">
-          <Button
-            variant="outline"
-            onClick={requestNotificationPermission}
-            className="w-full"
-            disabled={notificationsEnabled}
-          >
-            {notificationsEnabled ? (
-              <>
-                <Bell className="w-4 h-4 mr-2" />
-                Notificações Ativadas
-              </>
-            ) : (
-              <>
-                <BellOff className="w-4 h-4 mr-2" />
-                Ativar Notificações
-              </>
-            )}
-          </Button>
 
           <Button
             variant="destructive"
@@ -601,11 +654,7 @@ const Status = () => {
         </div>
       </div>
 
-      {/* Audio para notificações */}
-      <audio ref={audioRef} preload="auto">
-        <source src="/notification-sound.mp3" type="audio/mpeg" />
-        <source src="/notification-sound.wav" type="audio/wav" />
-      </audio>
+      {/* Removed audio notifications */}
 
       {/* Modais */}
       <TurnNotificationModal
@@ -613,17 +662,10 @@ const Status = () => {
         onConfirm={() => setTurnModal(false)}
         onCancel={() => setTurnModal(false)}
         restaurantName={party.restaurant?.name ?? ""}
-        toleranceTimeLeft={toleranceLeft ?? (party.tolerance_minutes ?? 10) * 60}
+        toleranceTimeLeft={toleranceTimeLeft ?? ((party.restaurant?.tolerance_minutes ?? 10) * 60) + 30}
       />
 
-      <TurnNotificationModal
-        isOpen={nextModal}
-        onConfirm={() => setNextModal(false)}
-        onCancel={() => setNextModal(false)}
-        restaurantName={party.restaurant?.name ?? ""}
-        toleranceTimeLeft={toleranceLeft ?? (party.tolerance_minutes ?? 10) * 60}
-        isNextInLine={true}
-      />
+      {/* Removed next in line modal */}
 
       <LeaveQueueConfirmation
         isOpen={leaveModal}

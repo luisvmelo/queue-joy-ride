@@ -1,8 +1,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, AlertTriangle } from "lucide-react";
 import TimeCounter from "@/components/TimeCounter";
+import ToleranceTimer from "@/components/ToleranceTimer";
 
 interface QueueParty {
   party_id: string;
@@ -49,15 +50,21 @@ const ReadyParties = ({
                     {party.party_size} {party.party_size === 1 ? 'pessoa' : 'pessoas'} • {party.phone}
                   </p>
                   {party.notified_ready_at && (
-                    <div className="mt-2">
+                    <div className="mt-2 space-y-2">
                       <TimeCounter
                         startTime={party.notified_ready_at}
                         label="Chamado há"
                         className="text-orange-600 text-sm"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Tolerância: {party.tolerance_minutes || 2} min + 30s (remoção automática)
-                      </p>
+                      <ToleranceTimer
+                        notifiedAt={party.notified_ready_at}
+                        toleranceMinutes={party.tolerance_minutes || 10}
+                        onTimeout={() => onMarkNoShow(party.party_id)}
+                      />
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>Remoção automática quando o tempo esgotar</span>
+                      </div>
                     </div>
                   )}
                 </div>

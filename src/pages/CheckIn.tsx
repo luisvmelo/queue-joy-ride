@@ -27,8 +27,37 @@ const CheckIn = () => {
       navigate("/restaurants");
       return;
     }
+    testDatabaseConnection();
     fetchRestaurant();
   }, [restaurantId, navigate]);
+
+  const testDatabaseConnection = async () => {
+    try {
+      console.log('🔧 Testing database connection...');
+      const { data, error } = await supabase.rpc('test_database_connection');
+      
+      if (error) {
+        console.error('❌ Database connection test failed:', error);
+      } else {
+        console.log('✅ Database connection test passed:', data);
+      }
+      
+      // Also test simple table access
+      const { data: restaurantData, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('id, name')
+        .eq('id', restaurantId)
+        .single();
+        
+      if (restaurantError) {
+        console.error('❌ Restaurant table access failed:', restaurantError);
+      } else {
+        console.log('✅ Restaurant table access successful:', restaurantData);
+      }
+    } catch (error) {
+      console.error('❌ Connection test error:', error);
+    }
+  };
 
   const fetchRestaurant = async () => {
     try {
@@ -97,9 +126,21 @@ const CheckIn = () => {
     setLoading(true);
 
     try {
+      console.log('🚀 Starting check-in process...');
+      console.log('📝 Form data:', formData);
+      console.log('🏪 Restaurant ID:', restaurantId);
+      
       const sanitizedName = sanitizeInput(formData.name);
       const sanitizedPhone = formData.phone.replace(/[^\d+\-\s()]/g, '');
 
+      console.log('🧼 Sanitized data:', {
+        name: sanitizedName,
+        phone: sanitizedPhone,
+        partySize: partySizeNum,
+        notificationType: formData.notificationType
+      });
+
+      console.log('📞 Calling create_customer_party RPC function...');
       const { data, error } = await supabase
         .rpc('create_customer_party', {
           p_restaurant_id: restaurantId,
@@ -109,7 +150,10 @@ const CheckIn = () => {
           p_notification_type: formData.notificationType
         });
 
+      console.log('📊 RPC Response:', { data, error });
+
       if (error) {
+        console.error('❌ RPC Error details:', error);
         throw error;
       }
 
