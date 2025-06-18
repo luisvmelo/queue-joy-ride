@@ -19,6 +19,7 @@ const CheckIn = () => {
     name: "",
     phone: "",
     partySize: "",
+    notificationType: "sms", // Padrão SMS
   });
 
   useEffect(() => {
@@ -105,7 +106,7 @@ const CheckIn = () => {
           p_name: sanitizedName,
           p_phone: sanitizedPhone,
           p_party_size: partySizeNum,
-          p_notification_type: 'sms'
+          p_notification_type: formData.notificationType
         });
 
       if (error) {
@@ -258,6 +259,41 @@ const CheckIn = () => {
                   required
                   disabled={loading}
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="notificationType">Como prefere ser notificado? *</Label>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, notificationType: 'sms' })}
+                    className={`p-4 border-2 rounded-lg text-center transition-all ${
+                      formData.notificationType === 'sms'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    disabled={loading}
+                  >
+                    <div className="text-2xl mb-1">📱</div>
+                    <div className="font-medium">SMS</div>
+                    <div className="text-xs text-gray-500">Mensagem de texto</div>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, notificationType: 'whatsapp' })}
+                    className={`p-4 border-2 rounded-lg text-center transition-all ${
+                      formData.notificationType === 'whatsapp'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    disabled={loading}
+                  >
+                    <div className="text-2xl mb-1">💬</div>
+                    <div className="font-medium">WhatsApp</div>
+                    <div className="text-xs text-gray-500">Mensagem no WhatsApp</div>
+                  </button>
+                </div>
               </div>
 
               <Button 
