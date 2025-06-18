@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,9 @@ const CheckIn = () => {
 
   useEffect(() => {
     console.log('CheckIn component mounted with restaurantId:', restaurantId);
+    console.log('Current URL:', window.location.href);
+    console.log('Current pathname:', window.location.pathname);
+    
     if (!restaurantId) {
       console.log('No restaurantId, redirecting to restaurants');
       navigate("/restaurants");
@@ -69,7 +71,9 @@ const CheckIn = () => {
     e.preventDefault();
     if (!restaurantId) return;
 
-    console.log('Starting form submission for restaurant:', restaurantId);
+    console.log('=== STARTING FORM SUBMISSION ===');
+    console.log('Restaurant ID:', restaurantId);
+    console.log('Form data:', formData);
 
     // Validate inputs
     if (!formData.name.trim()) {
@@ -122,30 +126,39 @@ const CheckIn = () => {
           p_notification_type: 'sms'
         });
 
-      console.log('RPC response:', { data, error });
+      console.log('=== RPC RESPONSE ===');
+      console.log('Data:', data);
+      console.log('Error:', error);
 
       if (error) {
-        console.error('RPC error:', error);
+        console.error('RPC error details:', error);
         throw error;
       }
 
       if (data && data.length > 0) {
         const { party_id, queue_position } = data[0];
         
-        console.log('Party created successfully:', { party_id, queue_position });
+        console.log('=== PARTY CREATED SUCCESSFULLY ===');
+        console.log('Party ID:', party_id);
+        console.log('Queue Position:', queue_position);
         
         // Armazenar credenciais do cliente para acesso seguro
         const phoneKey = `party_${party_id}_phone`;
         const nameKey = `party_${party_id}_name`;
         
-        console.log('Storing credentials with keys:', { phoneKey, nameKey });
+        console.log('=== STORING CREDENTIALS ===');
+        console.log('Phone Key:', phoneKey);
+        console.log('Name Key:', nameKey);
+        
         localStorage.setItem(phoneKey, sanitizedPhone);
         localStorage.setItem(nameKey, sanitizedName);
         
         // Verificar se foi armazenado corretamente
         const storedPhone = localStorage.getItem(phoneKey);
         const storedName = localStorage.getItem(nameKey);
-        console.log('Verification - stored data:', { storedPhone, storedName });
+        console.log('=== VERIFICATION ===');
+        console.log('Stored phone:', storedPhone);
+        console.log('Stored name:', storedName);
 
         // Mostrar toast de sucesso
         toast({
@@ -153,21 +166,34 @@ const CheckIn = () => {
           description: `Você está na posição ${queue_position} da fila.`,
         });
 
-        // Aguardar um momento para o toast aparecer, depois redirecionar
-        const targetUrl = `/status/${party_id}`;
-        console.log('Will redirect to:', targetUrl);
-        console.log('Current URL before redirect:', window.location.href);
+        // Construir URL de redirecionamento
+        const statusUrl = `/status/${party_id}`;
+        console.log('=== REDIRECTION ===');
+        console.log('Target URL:', statusUrl);
+        console.log('Full URL will be:', window.location.origin + statusUrl);
         
+        // Usar navigate do React Router primeiro
+        console.log('Attempting navigate...');
+        navigate(statusUrl, { replace: true });
+        
+        // Fallback: forçar redirecionamento após um delay curto
         setTimeout(() => {
-          console.log('Executing redirect to:', targetUrl);
-          window.location.replace(targetUrl);
-        }, 1000);
+          console.log('Fallback redirect executing...');
+          console.log('Current location before fallback:', window.location.href);
+          
+          if (!window.location.pathname.includes('/status/')) {
+            console.log('Navigate failed, using window.location');
+            window.location.href = statusUrl;
+          } else {
+            console.log('Navigate succeeded, already on status page');
+          }
+        }, 500);
 
       } else {
         throw new Error('Nenhum dado retornado da criação da party');
       }
     } catch (error: any) {
-      console.error('Error joining queue:', error);
+      console.error('=== ERROR IN SUBMISSION ===', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao entrar na fila",
@@ -189,7 +215,9 @@ const CheckIn = () => {
     );
   }
 
-  console.log('Rendering CheckIn page for restaurant:', restaurant.name);
+  console.log('=== RENDERING CHECKIN PAGE ===');
+  console.log('Restaurant:', restaurant?.name);
+  console.log('Current URL:', window.location.href);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 p-4">
