@@ -72,6 +72,18 @@ const Restaurants = () => {
     return { text: "Fila grande", color: "text-red-600 bg-red-50" };
   };
 
+  const getCategoryEmoji = (category: string) => {
+    const categoryLower = category?.toLowerCase() || '';
+    if (categoryLower.includes('restaurante') || categoryLower.includes('restaurant')) return '🍽️';
+    if (categoryLower.includes('bar')) return '🍺';
+    if (categoryLower.includes('café') || categoryLower.includes('cafe')) return '☕';
+    if (categoryLower.includes('lanchonete')) return '🍔';
+    if (categoryLower.includes('pizzaria')) return '🍕';
+    if (categoryLower.includes('sorveteria')) return '🍦';
+    if (categoryLower.includes('padaria')) return '🥖';
+    return '🍽️'; // default para restaurante
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center">
@@ -130,6 +142,7 @@ const Restaurants = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRestaurants.map((restaurant) => {
               const queueStatus = getQueueStatus(restaurant.queue_size);
+              const categoryEmoji = getCategoryEmoji(restaurant.category);
               
               return (
                 <Card 
@@ -187,7 +200,8 @@ const Restaurants = () => {
                     )}
                     
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500 capitalize">
+                      <span className="text-xs text-gray-500 capitalize flex items-center">
+                        <span className="mr-1">{categoryEmoji}</span>
                         {restaurant.category || 'Restaurante'}
                       </span>
                       
