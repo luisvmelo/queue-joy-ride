@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -277,7 +278,7 @@ const Restaurants = () => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {filteredRestaurants.map((restaurant) => {
               const queueStatus = getQueueStatus(restaurant.queue_size);
               const categoryEmoji = getCategoryEmoji(restaurant.category);
@@ -285,11 +286,11 @@ const Restaurants = () => {
               return (
                 <Card 
                   key={restaurant.id} 
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  className="cursor-pointer hover:shadow-lg transition-shadow min-h-[400px]"
                   onClick={() => handleRestaurantClick(restaurant.id)}
                 >
                   {restaurant.image_url && (
-                    <div className="h-48 overflow-hidden">
+                    <div className="h-52 overflow-hidden">
                       <img 
                         src={restaurant.image_url} 
                         alt={restaurant.name}
@@ -298,51 +299,54 @@ const Restaurants = () => {
                     </div>
                   )}
                   
-                  <CardContent className="p-5">
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="font-bold text-lg text-gray-900">
-                        {restaurant.name}
-                      </h3>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${queueStatus.color}`}>
-                        {queueStatus.text}
-                      </span>
-                    </div>
-                    
-                    {restaurant.address && (
-                      <div className="flex items-center text-gray-600 mb-3">
-                        <MapPin className="w-4 h-4 mr-2" />
-                        <span className="text-sm">{restaurant.address}</span>
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
-                      <div className="flex items-center">
-                        <Users className="w-4 h-4 mr-1" />
-                        <span>{restaurant.queue_size} na fila</span>
+                  <CardContent className="p-6 flex flex-col justify-between h-full">
+                    <div>
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="font-bold text-xl text-gray-900 leading-tight">
+                          {restaurant.name}
+                        </h3>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${queueStatus.color} bg-opacity-10 whitespace-nowrap ml-2`}>
+                          {queueStatus.text}
+                        </span>
                       </div>
                       
-                      {restaurant.min_wait_time > 0 && (
+                      {restaurant.address && (
+                        <div className="flex items-start text-gray-600 mb-4">
+                          <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm leading-relaxed">{restaurant.address}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between text-sm text-gray-600 mb-5">
                         <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>~{restaurant.min_wait_time} min</span>
+                          <Users className="w-4 h-4 mr-2" />
+                          <span>{restaurant.queue_size} na fila</span>
+                        </div>
+                        
+                        {restaurant.min_wait_time > 0 && (
+                          <div className="flex items-center">
+                            <Clock className="w-4 h-4 mr-2" />
+                            <span>~{restaurant.min_wait_time} min</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {restaurant.current_event && (
+                        <div className="mb-5">
+                          <span className="inline-block bg-blue-100 text-blue-800 text-xs px-3 py-2 rounded-full">
+                            🎉 {formatEventTypeForDisplay(restaurant.current_event)}
+                          </span>
                         </div>
                       )}
                     </div>
                     
-                    {restaurant.current_event && (
-                      <div className="mb-4">
-                        <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                          🎉 {formatEventTypeForDisplay(restaurant.current_event)}
-                        </span>
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500 capitalize">
-                        {categoryEmoji} {formatCategoryForDisplay(restaurant.category) || 'Restaurante'}
+                    <div className="flex items-center justify-between mt-auto pt-4">
+                      <span className="text-sm text-gray-500 capitalize flex items-center">
+                        <span className="mr-2">{categoryEmoji}</span>
+                        <span>{formatCategoryForDisplay(restaurant.category) || 'Restaurante'}</span>
                       </span>
                       
-                      <Button size="sm">
+                      <Button size="sm" className="px-4 py-2">
                         Ver Detalhes
                       </Button>
                     </div>
