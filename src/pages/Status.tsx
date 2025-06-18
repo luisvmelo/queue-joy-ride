@@ -67,6 +67,8 @@ const Status = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasNotifiedNext = useRef(false);
   const hasNotifiedReady = useRef(false);
+  const previousStatus = useRef<string | null>(null);
+  const previousPosition = useRef<number | null>(null);
 
   /* ------------------------------------------------------------------------ */
   /*  Security: Get customer credentials from localStorage                    */
@@ -153,23 +155,37 @@ const Status = () => {
           restaurant_avg_seat_time_minutes: partyData.restaurant_avg_seat_time_minutes
         };
 
-        setParty(formattedParty);
+        // Verificar mudanças de status para disparar popups
+        const currentStatus = formattedParty.status;
+        const currentPosition = formattedParty.queue_position;
 
-        // Calcular ETA melhorado
-        if (formattedParty.queue_position && formattedParty.restaurant_avg_seat_time_minutes) {
-          const eta = formattedParty.queue_position * formattedParty.restaurant_avg_seat_time_minutes;
-          setBetterEstimatedTime(eta);
+        // Reset flags se status mudou para waiting
+        if (currentStatus === 'waiting' && previousStatus.current !== 'waiting') {
+          hasNotifiedNext.current = false;
+          hasNotifiedReady.current = false;
         }
 
-        // Verificar se é o próximo na fila (posição 1 mas ainda waiting)
-        if (formattedParty.queue_position === 1 && formattedParty.status === 'waiting' && !hasNotifiedNext.current) {
+        // Popup "Você é o Próximo!" - quando vira posição 1 e ainda está waiting
+        if (currentPosition === 1 && 
+            currentStatus === 'waiting' && 
+            !hasNotifiedNext.current &&
+            (previousPosition.current !== 1 || previousStatus.current !== 'waiting')) {
+          console.log('Triggering next modal - position 1, status waiting');
           setNextModal(true);
           hasNotifiedNext.current = true;
           playNotificationSound();
+          
+          toast({
+            title: "Você é o Próximo! 🎯",
+            description: "Prepare-se! Você será chamado em breve.",
+          });
         }
 
-        // Verificar se a mesa está pronta
-        if (formattedParty.status === 'ready' && !hasNotifiedReady.current) {
+        // Popup "É Sua Vez!" - quando status muda para ready
+        if (currentStatus === 'ready' && 
+            !hasNotifiedReady.current &&
+            previousStatus.current !== 'ready') {
+          console.log('Triggering turn modal - status ready');
           setTurnModal(true);
           hasNotifiedReady.current = true;
           playNotificationSound();
@@ -179,6 +195,19 @@ const Status = () => {
             description: "Sua mesa está pronta! Dirija-se ao restaurante.",
           });
         }
+
+        // Atualizar refs
+        previousStatus.current = currentStatus;
+        previousPosition.current = currentPosition;
+
+        setParty(formattedParty);
+
+        // Calcular ETA melhorado
+        if (formattedParty.queue_position && formattedParty.restaurant_avg_seat_time_minutes) {
+          const eta = formattedParty.queue_position * formattedParty.restaurant_avg_seat_time_minutes;
+          setBetterEstimatedTime(eta);
+        }
+
       } else {
         setAccessDenied(true);
       }
@@ -510,7 +539,7 @@ const Status = () => {
       <NoShowScreen
         isOpen={noShowOpen}
         onRejoinQueue={handleRejoinQueue}
-        newPosition={50} // Vai para o final da fila
+        newPosition={50}
         restaurantName={party.restaurant_name ?? ""}
       />
     </div>
