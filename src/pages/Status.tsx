@@ -313,16 +313,23 @@ const Status = () => {
     if (!party) return;
 
     if (party.status === 'ready') {
-      // Start tolerance timer: restaurant tolerance + 30 seconds
-      const toleranceMinutes = party.restaurant?.tolerance_minutes || 10;
-      const totalSeconds = (toleranceMinutes * 60) + 30;
+      // Get tolerance from party data (from restaurant config)
+      const toleranceMinutes = party.tolerance_minutes || 5; // From get_restaurant_queue function
+      const totalSeconds = (toleranceMinutes * 60) + 30; // Restaurant time + 30s safety margin
+      
+      console.log('⏰ Starting tolerance timer:', {
+        restaurantTolerance: toleranceMinutes,
+        totalSeconds,
+        formattedTime: `${Math.floor(totalSeconds / 60)}:${(totalSeconds % 60).toString().padStart(2, '0')}`
+      });
+      
       setToleranceTimeLeft(totalSeconds);
       setIsToleranceActive(true);
     } else {
       setToleranceTimeLeft(null);
       setIsToleranceActive(false);
     }
-  }, [party?.status, party?.restaurant?.tolerance_minutes]);
+  }, [party?.status, party?.tolerance_minutes]);
 
   useEffect(() => {
     if (!isToleranceActive || toleranceTimeLeft === null || toleranceTimeLeft <= 0) return;
@@ -678,7 +685,7 @@ const Status = () => {
         onConfirm={() => setTurnModal(false)}
         onCancel={() => setTurnModal(false)}
         restaurantName={party.restaurant?.name ?? ""}
-        toleranceTimeLeft={toleranceTimeLeft ?? ((party.restaurant?.tolerance_minutes ?? 10) * 60) + 30}
+        toleranceTimeLeft={0} // Remove timer from modal, main screen shows it
       />
 
       {/* Removed next in line modal */}
