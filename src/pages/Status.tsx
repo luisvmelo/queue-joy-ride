@@ -47,7 +47,7 @@ interface Party {
 
 const Status = () => {
   /* misc ------------------------------------------------------------------- */
-  const { id } = useParams<{ id: string }>();
+  const { partyId } = useParams<{ partyId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -81,22 +81,8 @@ const Status = () => {
   /*  Security: Get customer credentials from localStorage                    */
   /* ------------------------------------------------------------------------ */
   const getCustomerCredentials = () => {
-    const phone = localStorage.getItem(`party_${id}_phone`);
-    const name = localStorage.getItem(`party_${id}_name`);
-    
-    console.log('🔐 Getting customer credentials:', {
-      party_id: id,
-      phone: phone ? 'EXISTS' : 'NOT_FOUND',
-      name: name ? 'EXISTS' : 'NOT_FOUND',
-      phoneKey: `party_${id}_phone`,
-      nameKey: `party_${id}_name`
-    });
-    
-    // Logs para debug das chaves do localStorage
-    const allKeys = Object.keys(localStorage);
-    const partyKeys = allKeys.filter(key => key.startsWith('party_'));
-    console.log('🗃️ All party keys in localStorage:', partyKeys);
-    
+    const phone = localStorage.getItem(`party_${partyId}_phone`);
+    const name = localStorage.getItem(`party_${partyId}_name`);
     return { phone, name };
   };
 
@@ -104,64 +90,48 @@ const Status = () => {
   /*  Setup inicial                                                           */
   /* ------------------------------------------------------------------------ */
   useEffect(() => {
-    console.log('🎯 Status page useEffect triggered with ID:', id);
-    
-    if (!id) {
-      console.log('❌ No ID in URL params, redirecting to home');
+    if (!partyId) {
       navigate("/");
       return;
     }
 
-    // Delay pequeno para garantir que o localStorage foi populado
     setTimeout(() => {
       fetchPartyData();
     }, 100);
 
-    // Configurar realtime subscription
     const channel = supabase
-      .channel(`party_${id}`)
+      .channel(`party_${partyId}`)
       .on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'parties', filter: `id=eq.${id}` },
+        { event: 'UPDATE', schema: 'public', table: 'parties', filter: `id=eq.${partyId}` },
         (payload) => {
-          console.log('🔄 Party updated via realtime:', payload);
           fetchPartyData();
         }
       )
       .subscribe();
 
     return () => {
-      console.log('🧹 Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
-  }, [id, navigate]);
+  }, [partyId, navigate]);
 
   /* ------------------------------------------------------------------------ */
   /*  Secure fetch party data using security definer function                */
   /* ------------------------------------------------------------------------ */
   const fetchPartyData = async () => {
-    if (!id) {
-      console.log('❌ No party ID provided');
+    if (!partyId) {
       navigate("/");
       return;
     }
 
-    console.log('🔄 Fetching party data for ID:', id);
-
     const { phone, name } = getCustomerCredentials();
     
     if (!phone || !name) {
-      console.log('❌ Missing credentials:', { phone: !!phone, name: !!name });
-      
-      // Dar mais tempo para verificar se as credenciais aparecerão
-      // (caso estejam sendo definidas assincronamente)
       setTimeout(() => {
         const { phone: retryPhone, name: retryName } = getCustomerCredentials();
         if (!retryPhone || !retryName) {
-          console.log('❌ Credentials still missing after retry, denying access');
           setAccessDenied(true);
           setLoading(false);
           
-          // Redirecionar para home após mostrar erro
           setTimeout(() => {
             toast({
               title: "Acesso negado",
@@ -173,48 +143,28 @@ const Status = () => {
           
           return;
         } else {
-          console.log('✅ Credentials found on retry, proceeding...');
-          // Recursivamente tentar novamente com as credenciais encontradas
           fetchPartyData();
         }
       }, 1000);
       return;
     }
 
-    // Sanitizar entradas para prevenir XSS
     const sanitizedPhone = phone.replace(/[^\d+\-\s()]/g, '');
     const sanitizedName = name.replace(/[<>"/]/g, '');
 
-    console.log('🧹 Sanitized credentials:', {
-      originalPhone: phone,
-      sanitizedPhone: sanitizedPhone,
-      originalName: name,
-      sanitizedName: sanitizedName
-    });
-
     try {
-      console.log('📡 Calling get_customer_party with:', {
-        party_uuid: id,
-        customer_phone: sanitizedPhone,
-        customer_name: sanitizedName
-      });
-
       const { data, error } = await supabase
         .rpc('get_customer_party', {
-          party_uuid: id,
+          party_uuid: partyId,
           customer_phone: sanitizedPhone,
           customer_name: sanitizedName
         });
 
-      console.log('📥 get_customer_party response:', { data, error });
-
       if (error) {
-        console.error('❌ Supabase RPC error:', error);
         throw error;
       }
 
       if (!data || data.length === 0) {
-        console.log('❌ No party found with provided credentials');
         setAccessDenied(true);
         setLoading(false);
         
@@ -224,13 +174,11 @@ const Status = () => {
           variant: "destructive"
         });
         
-        // Redirecionar para home após 3 segundos
         setTimeout(() => navigate("/"), 3000);
         return;
       }
 
       const partyData = data[0];
-      console.log('✅ Party data retrieved successfully:', partyData);
 
       setParty({
         id: partyData.id,
@@ -253,11 +201,8 @@ const Status = () => {
       });
 
       setAccessDenied(false);
-      console.log('✅ Party state updated successfully');
 
     } catch (error: any) {
-      console.error('💥 Error fetching party data:', error);
-      
       toast({
         title: "Erro",
         description: error.message || "Erro ao buscar dados da fila",
@@ -265,8 +210,6 @@ const Status = () => {
       });
       
       setAccessDenied(true);
-      
-      // Redirecionar para home em caso de erro
       setTimeout(() => navigate("/"), 3000);
     } finally {
       setLoading(false);
@@ -389,7 +332,7 @@ const Status = () => {
 
       const { data, error } = await supabase
         .rpc('update_customer_party_status', {
-          party_uuid: id,
+          party_uuid: partyId,
           customer_phone: phone,
           new_status: 'removed'
         });
