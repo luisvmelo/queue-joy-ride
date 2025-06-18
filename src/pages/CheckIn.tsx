@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, Users, Bug } from "lucide-react";
 
 const CheckIn = () => {
   const { restaurantId } = useParams();
@@ -15,19 +15,29 @@ const CheckIn = () => {
   
   const [restaurant, setRestaurant] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [showDebug, setShowDebug] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     partySize: "",
   });
 
+  // Função para adicionar logs visuais
+  const addDebugLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logMessage = `[${timestamp}] ${message}`;
+    console.log(logMessage);
+    setDebugLogs(prev => [...prev.slice(-10), logMessage]); // Manter apenas os últimos 10 logs
+  };
+
   useEffect(() => {
-    console.log('CheckIn component mounted with restaurantId:', restaurantId);
-    console.log('Current URL:', window.location.href);
-    console.log('Current pathname:', window.location.pathname);
+    addDebugLog('🎯 CheckIn component mounted');
+    addDebugLog(`📍 Restaurant ID: ${restaurantId}`);
+    addDebugLog(`🌐 Current URL: ${window.location.href}`);
     
     if (!restaurantId) {
-      console.log('No restaurantId, redirecting to restaurants');
+      addDebugLog('❌ No restaurantId, redirecting to restaurants');
       navigate("/restaurants");
       return;
     }
@@ -36,6 +46,7 @@ const CheckIn = () => {
 
   const fetchRestaurant = async () => {
     try {
+      addDebugLog('🔄 Fetching restaurant data...');
       const { data, error } = await supabase
         .from('restaurants')
         .select('*')
@@ -44,10 +55,10 @@ const CheckIn = () => {
         .single();
 
       if (error) throw error;
-      console.log('Restaurant fetched successfully:', data);
+      addDebugLog(`✅ Restaurant fetched: ${data.name}`);
       setRestaurant(data);
     } catch (error: any) {
-      console.error('Error fetching restaurant:', error);
+      addDebugLog(`❌ Error fetching restaurant: ${error.message}`);
       toast({
         title: "Erro",
         description: "Restaurante não encontrado ou inativo",
@@ -71,12 +82,12 @@ const CheckIn = () => {
     e.preventDefault();
     if (!restaurantId) return;
 
-    console.log('=== STARTING FORM SUBMISSION ===');
-    console.log('Restaurant ID:', restaurantId);
-    console.log('Form data:', formData);
+    addDebugLog('🚀 === FORM SUBMISSION STARTED ===');
+    addDebugLog(`📝 Form data: ${JSON.stringify(formData)}`);
 
     // Validate inputs
     if (!formData.name.trim()) {
+      addDebugLog('❌ Validation failed: Name is required');
       toast({
         title: "Erro",
         description: "Nome é obrigatório",
@@ -86,6 +97,7 @@ const CheckIn = () => {
     }
 
     if (!validatePhone(formData.phone)) {
+      addDebugLog('❌ Validation failed: Invalid phone');
       toast({
         title: "Erro",
         description: "Telefone deve ter entre 10 e 15 dígitos",
@@ -96,6 +108,7 @@ const CheckIn = () => {
 
     const partySizeNum = parseInt(formData.partySize) || 0;
     if (partySizeNum < 1 || partySizeNum > 20) {
+      addDebugLog('❌ Validation failed: Invalid party size');
       toast({
         title: "Erro",
         description: "Número de pessoas deve estar entre 1 e 20",
@@ -104,126 +117,113 @@ const CheckIn = () => {
       return;
     }
 
+    addDebugLog('✅ All validations passed');
     setLoading(true);
 
     try {
       const sanitizedName = sanitizeInput(formData.name);
       const sanitizedPhone = formData.phone.replace(/[^\d+\-\s()]/g, '');
 
-      console.log('Creating party with data:', {
-        restaurant_id: restaurantId,
-        name: sanitizedName,
-        phone: sanitizedPhone,
-        party_size: partySizeNum
-      });
+      addDebugLog(`🧹 Sanitized data: name="${sanitizedName}", phone="${sanitizedPhone}", size=${partySizeNum}`);
 
-      const { data, error } = await supabase
-        .rpc('create_customer_party', {
-          p_restaurant_id: restaurantId,
-          p_name: sanitizedName,
-          p_phone: sanitizedPhone,
-          p_party_size: partySizeNum,
-          p_notification_type: 'sms'
-        });
+      const rpcData = {
+        p_restaurant_id: restaurantId,
+        p_name: sanitizedName,
+        p_phone: sanitizedPhone,
+        p_party_size: partySizeNum,
+        p_notification_type: 'sms'
+      };
 
-      console.log('=== RPC RESPONSE ===');
-      console.log('Data:', data);
-      console.log('Error:', error);
+      addDebugLog(`📡 Calling RPC with: ${JSON.stringify(rpcData)}`);
+
+      const { data, error } = await supabase.rpc('create_customer_party', rpcData);
+
+      addDebugLog(`📥 RPC Response - Data: ${JSON.stringify(data)}`);
+      addDebugLog(`📥 RPC Response - Error: ${JSON.stringify(error)}`);
 
       if (error) {
-        console.error('RPC error details:', error);
+        addDebugLog(`❌ RPC Error: ${error.message}`);
         throw error;
       }
 
       if (data && data.length > 0) {
         const { party_id, queue_position } = data[0];
         
-        console.log('=== PARTY CREATED SUCCESSFULLY ===');
-        console.log('Party ID:', party_id);
-        console.log('Queue Position:', queue_position);
+        addDebugLog(`🎉 Party created! ID: ${party_id}, Position: ${queue_position}`);
         
-        // Armazenar credenciais do cliente para acesso seguro
+        // Armazenar credenciais
         const phoneKey = `party_${party_id}_phone`;
         const nameKey = `party_${party_id}_name`;
         
-        console.log('=== STORING CREDENTIALS ===');
-        console.log('Phone Key:', phoneKey);
-        console.log('Name Key:', nameKey);
+        addDebugLog(`💾 Storing credentials with keys: ${phoneKey}, ${nameKey}`);
         
         localStorage.setItem(phoneKey, sanitizedPhone);
         localStorage.setItem(nameKey, sanitizedName);
         
-        // 🔍 VERIFICAÇÃO RIGOROSA das credenciais
+        // Verificar se foi armazenado
         const storedPhone = localStorage.getItem(phoneKey);
         const storedName = localStorage.getItem(nameKey);
-        console.log('=== VERIFICATION ===');
-        console.log('Stored phone:', storedPhone);
-        console.log('Stored name:', storedName);
-        console.log('Phone match:', storedPhone === sanitizedPhone);
-        console.log('Name match:', storedName === sanitizedName);
+        
+        addDebugLog(`🔍 Verification - Phone stored: ${storedPhone === sanitizedPhone ? '✅' : '❌'}`);
+        addDebugLog(`🔍 Verification - Name stored: ${storedName === sanitizedName ? '✅' : '❌'}`);
 
-        // ⚠️ VALIDAÇÃO CRÍTICA: Se as credenciais não foram salvas corretamente, não prosseguir
         if (!storedPhone || !storedName || storedPhone !== sanitizedPhone || storedName !== sanitizedName) {
-          console.error('❌ CRITICAL: Credentials not stored correctly!');
+          addDebugLog('❌ CRITICAL: Credentials not stored correctly!');
           throw new Error('Falha ao armazenar credenciais. Tente novamente.');
         }
 
-        // Mostrar toast de sucesso
+        // Toast de sucesso
         toast({
           title: "Entrada na fila confirmada! 🎉",
           description: `Você está na posição ${queue_position} da fila.`,
           duration: 3000
         });
 
-        // Construir URL de redirecionamento
+        // Redirecionamento
         const statusUrl = `/status/${party_id}`;
-        console.log('=== REDIRECTION ===');
-        console.log('Target URL:', statusUrl);
-        console.log('Full URL will be:', window.location.origin + statusUrl);
+        addDebugLog(`🎯 Target URL: ${statusUrl}`);
+        addDebugLog(`🌐 Full URL will be: ${window.location.origin}${statusUrl}`);
         
-        // 🚀 REDIRECIONAMENTO MELHORADO
-        console.log('🎯 Starting navigation sequence...');
+        addDebugLog('🔄 Attempting React Router navigation...');
         
-        // Primeira tentativa: React Router navigate
         try {
-          console.log('Attempting React Router navigate...');
           navigate(statusUrl, { replace: true });
+          addDebugLog('✅ Navigate called successfully');
           
-          // Aguardar um pouco para verificar se o navigate funcionou
+          // Verificar após delay
           setTimeout(() => {
-            console.log('Checking navigation result...');
-            console.log('Current pathname:', window.location.pathname);
-            console.log('Expected pathname:', statusUrl);
+            const currentPath = window.location.pathname;
+            addDebugLog(`🔍 Current path after navigate: ${currentPath}`);
+            addDebugLog(`🔍 Expected path: ${statusUrl}`);
             
-            // Se não redirecionou corretamente, usar fallback
-            if (window.location.pathname !== statusUrl) {
-              console.log('❌ React Router failed, using window.location fallback');
+            if (currentPath !== statusUrl) {
+              addDebugLog('⚠️ React Router failed, using window.location fallback');
               window.location.href = statusUrl;
             } else {
-              console.log('✅ React Router navigation successful!');
+              addDebugLog('🎉 Navigation successful!');
             }
           }, 300);
           
-        } catch (navigationError) {
-          console.error('❌ Navigation error:', navigationError);
-          // Fallback imediato em caso de erro
+        } catch (navigationError: any) {
+          addDebugLog(`❌ Navigation error: ${navigationError.message}`);
           window.location.href = statusUrl;
         }
 
-        // 🛡️ FALLBACK FINAL: Garantir redirecionamento após 1 segundo
+        // Fallback final
         setTimeout(() => {
-          if (window.location.pathname !== statusUrl) {
-            console.log('🔄 Final fallback executing...');
-            console.log('Current location before final fallback:', window.location.href);
+          const currentPath = window.location.pathname;
+          if (currentPath !== statusUrl) {
+            addDebugLog('🔄 Final fallback executing...');
             window.location.replace(statusUrl);
           }
         }, 1000);
 
       } else {
+        addDebugLog('❌ No data returned from RPC');
         throw new Error('Nenhum dado retornado da criação da party');
       }
     } catch (error: any) {
-      console.error('=== ERROR IN SUBMISSION ===', error);
+      addDebugLog(`💥 ERROR: ${error.message}`);
       toast({
         title: "Erro",
         description: error.message || "Erro ao entrar na fila",
@@ -246,13 +246,44 @@ const CheckIn = () => {
     );
   }
 
-  console.log('=== RENDERING CHECKIN PAGE ===');
-  console.log('Restaurant:', restaurant?.name);
-  console.log('Current URL:', window.location.href);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 p-4">
       <div className="max-w-md mx-auto">
+        {/* Debug Toggle Button */}
+        <Button
+          onClick={() => setShowDebug(!showDebug)}
+          variant="outline"
+          size="sm"
+          className="mb-4 w-full"
+        >
+          <Bug className="w-4 h-4 mr-2" />
+          {showDebug ? 'Ocultar' : 'Mostrar'} Debug Logs
+        </Button>
+
+        {/* Debug Panel */}
+        {showDebug && (
+          <Card className="mb-4 bg-black text-green-400 text-xs">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">🐛 Debug Logs</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="max-h-40 overflow-y-auto font-mono">
+                {debugLogs.map((log, index) => (
+                  <div key={index} className="mb-1">{log}</div>
+                ))}
+              </div>
+              <Button
+                onClick={() => setDebugLogs([])}
+                variant="secondary"
+                size="sm"
+                className="mt-2 w-full"
+              >
+                Limpar Logs
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-2xl flex items-center justify-center gap-2">
