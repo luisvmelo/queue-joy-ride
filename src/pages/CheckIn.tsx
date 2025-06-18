@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -133,37 +132,15 @@ const CheckIn = () => {
         localStorage.setItem(`party_${party_id}_phone`, sanitizedPhone);
         localStorage.setItem(`party_${party_id}_name`, sanitizedName);
 
-        console.log('Stored credentials in localStorage:', {
-          phone: localStorage.getItem(`party_${party_id}_phone`),
-          name: localStorage.getItem(`party_${party_id}_name`)
-        });
-
         // Mostrar toast de sucesso
         toast({
           title: "Entrada na fila confirmada! 🎉",
           description: `Você está na posição ${queue_position} da fila.`,
         });
 
-        console.log('About to navigate to:', `/status/${party_id}`);
-        console.log('Current location:', window.location.href);
-        
-        // Forçar redirecionamento usando window.location como fallback
-        try {
-          navigate(`/status/${party_id}`, { replace: true });
-          console.log('Navigate called successfully');
-          
-          // Fallback com window.location após um pequeno delay
-          setTimeout(() => {
-            if (window.location.pathname !== `/status/${party_id}`) {
-              console.log('Navigate failed, using window.location fallback');
-              window.location.href = `/status/${party_id}`;
-            }
-          }, 100);
-          
-        } catch (navError) {
-          console.error('Navigation error:', navError);
-          window.location.href = `/status/${party_id}`;
-        }
+        // Usar window.location.href diretamente para garantir redirecionamento
+        console.log('Redirecting to:', `/status/${party_id}`);
+        window.location.href = `/status/${party_id}`;
 
       } else {
         throw new Error('Nenhum dado retornado da criação da party');
