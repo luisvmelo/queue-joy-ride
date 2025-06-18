@@ -86,10 +86,10 @@ const Restaurants = () => {
   };
 
   const getQueueStatus = (queueSize: number) => {
-    if (queueSize === 0) return { text: "Sem fila", color: "text-green-600 bg-green-50" };
-    if (queueSize <= 5) return { text: "Fila pequena", color: "text-yellow-600 bg-yellow-50" };
-    if (queueSize <= 10) return { text: "Fila média", color: "text-orange-600 bg-orange-50" };
-    return { text: "Fila grande", color: "text-red-600 bg-red-50" };
+    if (queueSize === 0) return { text: "Sem fila", color: "text-green-600" };
+    if (queueSize <= 5) return { text: "Fila pequena", color: "text-yellow-600" };
+    if (queueSize <= 10) return { text: "Fila média", color: "text-orange-600" };
+    return { text: "Fila grande", color: "text-red-600" };
   };
 
   const getCategoryEmoji = (category: string) => {
@@ -101,7 +101,7 @@ const Restaurants = () => {
     if (categoryLower.includes('pizzaria')) return '🍕';
     if (categoryLower.includes('sorveteria')) return '🍦';
     if (categoryLower.includes('padaria')) return '🥖';
-    return '🍽️'; // default para restaurante
+    return '🍽️';
   };
 
   const clearFilters = () => {
@@ -122,32 +122,29 @@ const Restaurants = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4">
           </div>
-          <p className="text-gray-600 font-medium">Carregando restaurantes...</p>
+          <p className="text-gray-600">Carregando restaurantes...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-orange-100">
+      <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="text-center flex-1">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-blue-600 bg-clip-text text-transparent">
-                Restaurantes
-              </h1>
+              <h1 className="text-3xl font-bold text-gray-900">Restaurantes</h1>
               <p className="text-gray-600 mt-1">Encontre o melhor lugar para sua experiência</p>
             </div>
             <Button
               variant="outline"
               onClick={() => navigate("/")}
-              className="hover:bg-orange-50 border-orange-200"
             >
               Voltar ao Início
             </Button>
@@ -166,7 +163,7 @@ const Restaurants = () => {
               placeholder="Buscar por nome, localização ou categoria..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-3 w-full text-lg border-orange-200 focus:border-orange-400 focus:ring-orange-400"
+              className="pl-10 pr-4 py-3 w-full text-lg"
             />
           </div>
 
@@ -175,12 +172,12 @@ const Restaurants = () => {
             <Button
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 hover:bg-orange-50 border-orange-200"
+              className="flex items-center gap-2"
             >
               <Filter className="w-4 h-4" />
               Filtros
               {(selectedCategory !== "all" || selectedEventType !== "all") && (
-                <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+                <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
                   {(selectedCategory !== "all" ? 1 : 0) + (selectedEventType !== "all" ? 1 : 0)}
                 </span>
               )}
@@ -200,14 +197,14 @@ const Restaurants = () => {
 
           {/* Filter Options */}
           {showFilters && (
-            <div className="bg-white/60 backdrop-blur-sm rounded-lg p-4 border border-orange-100 space-y-4">
+            <div className="bg-white rounded-lg p-4 shadow-sm space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Categoria
                   </label>
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="border-orange-200 focus:border-orange-400">
+                    <SelectTrigger>
                       <SelectValue placeholder="Todas as categorias" />
                     </SelectTrigger>
                     <SelectContent>
@@ -226,7 +223,7 @@ const Restaurants = () => {
                     Tipo de Evento
                   </label>
                   <Select value={selectedEventType} onValueChange={setSelectedEventType}>
-                    <SelectTrigger className="border-orange-200 focus:border-orange-400">
+                    <SelectTrigger>
                       <SelectValue placeholder="Todos os eventos" />
                     </SelectTrigger>
                     <SelectContent>
@@ -249,7 +246,7 @@ const Restaurants = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {filteredRestaurants.length === 0 ? (
           <div className="text-center py-16">
-            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-8 border border-orange-100">
+            <div className="bg-white rounded-lg p-8 shadow-sm">
               <p className="text-xl text-gray-600 mb-2">
                 {searchTerm || selectedCategory !== "all" || selectedEventType !== "all" 
                   ? "Nenhum restaurante encontrado com os filtros aplicados." 
@@ -260,7 +257,7 @@ const Restaurants = () => {
                 <Button
                   variant="outline"
                   onClick={clearFilters}
-                  className="mt-4 hover:bg-orange-50 border-orange-200"
+                  className="mt-4"
                 >
                   Limpar filtros
                 </Button>
@@ -276,46 +273,45 @@ const Restaurants = () => {
               return (
                 <Card 
                   key={restaurant.id} 
-                  className="cursor-pointer hover:shadow-xl transition-all duration-300 overflow-hidden bg-white/80 backdrop-blur-sm border-orange-100 hover:border-orange-200 hover:scale-[1.02]"
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => handleRestaurantClick(restaurant.id)}
                 >
                   {restaurant.image_url && (
-                    <div className="h-48 overflow-hidden relative">
+                    <div className="h-48 overflow-hidden">
                       <img 
                         src={restaurant.image_url} 
                         alt={restaurant.name}
-                        className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                        className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                     </div>
                   )}
                   
                   <CardContent className="p-5">
                     <div className="flex justify-between items-start mb-3">
-                      <h3 className="font-bold text-lg text-gray-900 line-clamp-1">
+                      <h3 className="font-bold text-lg text-gray-900">
                         {restaurant.name}
                       </h3>
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${queueStatus.color} border border-current/20`}>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${queueStatus.color}`}>
                         {queueStatus.text}
-                      </div>
+                      </span>
                     </div>
                     
                     {restaurant.address && (
                       <div className="flex items-center text-gray-600 mb-3">
-                        <MapPin className="w-4 h-4 mr-2 flex-shrink-0 text-orange-500" />
-                        <span className="text-sm line-clamp-1">{restaurant.address}</span>
+                        <MapPin className="w-4 h-4 mr-2" />
+                        <span className="text-sm">{restaurant.address}</span>
                       </div>
                     )}
                     
                     <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
-                      <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
-                        <Users className="w-4 h-4 mr-1 text-blue-500" />
+                      <div className="flex items-center">
+                        <Users className="w-4 h-4 mr-1" />
                         <span>{restaurant.queue_size} na fila</span>
                       </div>
                       
                       {restaurant.min_wait_time > 0 && (
-                        <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
-                          <Clock className="w-4 h-4 mr-1 text-orange-500" />
+                        <div className="flex items-center">
+                          <Clock className="w-4 h-4 mr-1" />
                           <span>~{restaurant.min_wait_time} min</span>
                         </div>
                       )}
@@ -323,22 +319,18 @@ const Restaurants = () => {
                     
                     {restaurant.current_event && (
                       <div className="mb-4">
-                        <span className="inline-block bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 text-xs px-3 py-1 rounded-full border border-blue-200">
+                        <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
                           🎉 {restaurant.current_event}
                         </span>
                       </div>
                     )}
                     
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500 capitalize flex items-center bg-gray-50 rounded-lg px-3 py-1">
-                        <span className="mr-2">{categoryEmoji}</span>
-                        {restaurant.category || 'Restaurante'}
+                      <span className="text-xs text-gray-500 capitalize">
+                        {categoryEmoji} {restaurant.category || 'Restaurante'}
                       </span>
                       
-                      <Button 
-                        size="sm" 
-                        className="bg-gradient-to-r from-orange-500 to-blue-500 text-white hover:from-orange-600 hover:to-blue-600 border-0 shadow-md"
-                      >
+                      <Button size="sm">
                         Ver Detalhes
                       </Button>
                     </div>
