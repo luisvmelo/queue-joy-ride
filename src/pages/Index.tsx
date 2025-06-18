@@ -1,26 +1,33 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { Users } from "lucide-react";
 import QRScanner from "@/components/QRScanner";
+
 const Index = () => {
   const navigate = useNavigate();
   const [showScanner, setShowScanner] = useState(false);
+
   const handleScanQRCode = () => {
     setShowScanner(true);
   };
+
   const handleCloseScanner = () => {
     setShowScanner(false);
   };
-  return <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex flex-col">
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex flex-col">
       {/* Header */}
       <div className="text-center pt-12 pb-8 relative">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Line-up</h1>
         <p className="text-gray-600 text-lg">Bem-vindo! Pule a fila e entre na nossa lista digital</p>
         
-        {/* Cadastrar Empresa Button */}
+        {/* Admin Button */}
         <div className="absolute top-6 right-6">
-          <Button onClick={() => navigate("/login")} variant="outline" size="sm" className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50">Área de Admin
-        </Button>
+          <Button onClick={() => navigate("/login")} variant="outline" size="sm" className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50">
+            Área de Admin
+          </Button>
         </div>
       </div>
 
@@ -70,11 +77,29 @@ const Index = () => {
               Avisaremos quando sua mesa estiver pronta
             </p>
           </div>
+
+          {/* Receptionist Access Button */}
+          <div className="pt-8 border-t border-gray-200">
+            <div className="text-center mb-4">
+              <p className="text-xs text-gray-500 mb-3">Você é funcionário?</p>
+              <Button 
+                onClick={() => navigate("/receptionist-login")} 
+                variant="outline" 
+                size="sm"
+                className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Acesso da Recepção
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* QR Scanner Modal */}
       {showScanner && <QRScanner onClose={handleCloseScanner} />}
-    </div>;
+    </div>
+  );
 };
+
 export default Index;

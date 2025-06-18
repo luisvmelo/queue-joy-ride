@@ -130,11 +130,11 @@ const CheckIn = () => {
           throw new Error('Falha ao armazenar credenciais. Tente novamente.');
         }
 
-        // Toast de sucesso
+        // Toast de sucesso com mensagem personalizada
         toast({
-          title: "Entrada na fila confirmada! 🎉",
-          description: `Você está na posição ${queue_position} da fila.`,
-          duration: 3000
+          title: "🎉 Bem-vindo à fila virtual!",
+          description: `Olá ${sanitizedName}! Você está na posição ${queue_position} da fila do ${restaurant.name}. Relaxe e aguarde - avisaremos quando sua mesa estiver pronta!`,
+          duration: 5000
         });
 
         // Redirecionamento

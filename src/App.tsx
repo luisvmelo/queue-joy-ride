@@ -39,7 +39,7 @@ const App = () => (
           <Route path="/queue/:restaurantId" element={<QueuePage />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/receptionist" element={<ReceptionistDashboard />} />
-          <Route path="/receptionist-access" element={<ReceptionistAccess />} />
+          <Route path="/receptionist-access/:restaurantId" element={<ReceptionistAccess />} />
           <Route path="/receptionist-login" element={<ReceptionistLogin />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
