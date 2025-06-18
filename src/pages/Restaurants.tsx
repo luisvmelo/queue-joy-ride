@@ -299,7 +299,7 @@ const Restaurants = () => {
                     </div>
                   )}
                   
-                  <CardContent className="p-6 flex flex-col justify-between h-full">
+                  <CardContent className="p-5 flex flex-col justify-between h-full">
                     <div>
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="font-bold text-xl text-gray-900 leading-tight">
