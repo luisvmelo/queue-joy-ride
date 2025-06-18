@@ -212,7 +212,8 @@ const Restaurants = () => {
 
       {/* Restaurant List */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        {filteredRestaurants.length === 0 ? <div className="text-center py-16">
+        {filteredRestaurants.length === 0 ? 
+          <div className="text-center py-16">
             <div className="bg-white rounded-lg p-8 shadow-sm">
               <p className="text-xl text-gray-600 mb-2">
                 {searchTerm || selectedCategory !== "all" || selectedEventType !== "all" ? "Nenhum restaurante encontrado com os filtros aplicados." : "Nenhum restaurante disponível no momento."}
@@ -225,7 +226,7 @@ const Restaurants = () => {
             {filteredRestaurants.map(restaurant => {
           const queueStatus = getQueueStatus(restaurant.queue_size);
           const categoryEmoji = getCategoryEmoji(restaurant.category);
-          return <Card key={restaurant.id} className="cursor-pointer hover:shadow-lg transition-shadow min-h-[400px]" onClick={() => handleRestaurantClick(restaurant.id)}>
+          return <Card key={restaurant.id} className="cursor-pointer hover:shadow-lg transition-shadow min-h-[320px]" onClick={() => handleRestaurantClick(restaurant.id)}>
                   {restaurant.image_url && <div className="h-52 overflow-hidden">
                       <img src={restaurant.image_url} alt={restaurant.name} className="w-full h-full object-cover" />
                     </div>}
