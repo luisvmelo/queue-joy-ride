@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,9 @@ const CheckIn = () => {
   });
 
   useEffect(() => {
+    console.log('CheckIn component mounted with restaurantId:', restaurantId);
     if (!restaurantId) {
+      console.log('No restaurantId, redirecting to restaurants');
       navigate("/restaurants");
       return;
     }
@@ -39,6 +42,7 @@ const CheckIn = () => {
         .single();
 
       if (error) throw error;
+      console.log('Restaurant fetched successfully:', data);
       setRestaurant(data);
     } catch (error: any) {
       console.error('Error fetching restaurant:', error);
@@ -64,6 +68,8 @@ const CheckIn = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId) return;
+
+    console.log('Starting form submission for restaurant:', restaurantId);
 
     // Validate inputs
     if (!formData.name.trim()) {
@@ -129,8 +135,17 @@ const CheckIn = () => {
         console.log('Party created successfully:', { party_id, queue_position });
         
         // Armazenar credenciais do cliente para acesso seguro
-        localStorage.setItem(`party_${party_id}_phone`, sanitizedPhone);
-        localStorage.setItem(`party_${party_id}_name`, sanitizedName);
+        const phoneKey = `party_${party_id}_phone`;
+        const nameKey = `party_${party_id}_name`;
+        
+        console.log('Storing credentials with keys:', { phoneKey, nameKey });
+        localStorage.setItem(phoneKey, sanitizedPhone);
+        localStorage.setItem(nameKey, sanitizedName);
+        
+        // Verificar se foi armazenado corretamente
+        const storedPhone = localStorage.getItem(phoneKey);
+        const storedName = localStorage.getItem(nameKey);
+        console.log('Verification - stored data:', { storedPhone, storedName });
 
         // Mostrar toast de sucesso
         toast({
@@ -138,9 +153,15 @@ const CheckIn = () => {
           description: `Você está na posição ${queue_position} da fila.`,
         });
 
-        // Usar window.location.href diretamente para garantir redirecionamento
-        console.log('Redirecting to:', `/status/${party_id}`);
-        window.location.href = `/status/${party_id}`;
+        // Aguardar um momento para o toast aparecer, depois redirecionar
+        const targetUrl = `/status/${party_id}`;
+        console.log('Will redirect to:', targetUrl);
+        console.log('Current URL before redirect:', window.location.href);
+        
+        setTimeout(() => {
+          console.log('Executing redirect to:', targetUrl);
+          window.location.replace(targetUrl);
+        }, 1000);
 
       } else {
         throw new Error('Nenhum dado retornado da criação da party');
@@ -167,6 +188,8 @@ const CheckIn = () => {
       </div>
     );
   }
+
+  console.log('Rendering CheckIn page for restaurant:', restaurant.name);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 p-4">
