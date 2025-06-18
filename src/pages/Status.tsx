@@ -159,10 +159,20 @@ const Status = () => {
         const currentStatus = formattedParty.status;
         const currentPosition = formattedParty.queue_position;
 
+        console.log('Current state:', { 
+          currentStatus, 
+          currentPosition, 
+          previousStatus: previousStatus.current, 
+          previousPosition: previousPosition.current,
+          hasNotifiedNext: hasNotifiedNext.current,
+          hasNotifiedReady: hasNotifiedReady.current
+        });
+
         // Reset flags se status mudou para waiting
         if (currentStatus === 'waiting' && previousStatus.current !== 'waiting') {
           hasNotifiedNext.current = false;
           hasNotifiedReady.current = false;
+          console.log('Reset notification flags - status changed to waiting');
         }
 
         // Popup "Você é o Próximo!" - quando vira posição 1 e ainda está waiting
@@ -174,6 +184,7 @@ const Status = () => {
           setNextModal(true);
           hasNotifiedNext.current = true;
           playNotificationSound();
+          sendBrowserNotification("Você é o Próximo! 🎯", "Prepare-se! Você será chamado em breve.");
           
           toast({
             title: "Você é o Próximo! 🎯",
@@ -189,6 +200,7 @@ const Status = () => {
           setTurnModal(true);
           hasNotifiedReady.current = true;
           playNotificationSound();
+          sendBrowserNotification("Mesa Pronta! 🎉", "Sua mesa está pronta! Dirija-se ao restaurante.");
           
           toast({
             title: "Mesa Pronta! 🎉",
@@ -229,10 +241,60 @@ const Status = () => {
     }
   };
 
+  const sendBrowserNotification = (title: string, body: string) => {
+    if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: '/favicon.ico',
+        requireInteraction: true
+      });
+    }
+  };
+
   const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
+    console.log('Requesting notification permission...');
+    
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      toast({
+        title: "Notificações não suportadas",
+        description: "Seu navegador não suporta notificações.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
       const permission = await Notification.requestPermission();
-      setNotificationsEnabled(permission === 'granted');
+      console.log('Notification permission:', permission);
+      
+      if (permission === 'granted') {
+        setNotificationsEnabled(true);
+        
+        // Enviar notificação de teste
+        new Notification("Notificações Ativadas! 🔔", {
+          body: "Você receberá avisos quando for sua vez na fila.",
+          icon: '/favicon.ico'
+        });
+        
+        toast({
+          title: "Notificações ativadas!",
+          description: "Você receberá avisos quando for sua vez na fila.",
+        });
+      } else {
+        toast({
+          title: "Permissão negada",
+          description: "Para receber notificações, permita no seu navegador.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      toast({
+        title: "Erro nas notificações",
+        description: "Não foi possível ativar as notificações.",
+        variant: "destructive"
+      });
     }
   };
 
