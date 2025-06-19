@@ -1,7 +1,6 @@
-
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import QrScanner from "qr-scanner";
+import { BrowserQRCodeReader } from "@zxing/browser";
 import { Button } from "@/components/ui/button";
 import { X, Camera, CameraOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -12,7 +11,7 @@ interface QRScannerProps {
 
 const QRScanner = ({ onClose }: QRScannerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const scannerRef = useRef<QrScanner | null>(null);
+  const readerRef = useRef<BrowserQRCodeReader | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -21,44 +20,76 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
 
   useEffect(() => {
     const initializeScanner = async () => {
-      if (!videoRef.current) {
-        console.log("Video ref not ready");
-        return;
-      }
-
-      console.log("Initializing QR scanner...");
+      if (!videoRef.current) return;
 
       try {
-        const scanner = new QrScanner(
+        const reader = new BrowserQRCodeReader();
+        readerRef.current = reader;
+        
+        // Get available video devices
+        const videoInputDevices = await reader.getVideoInputDevices();
+        
+        if (videoInputDevices.length === 0) {
+          setError("Nenhuma câmera encontrada no dispositivo");
+          return;
+        }
+
+        // Use the back camera if available, otherwise use the first camera
+        const backCamera = videoInputDevices.find(device => 
+          device.label.toLowerCase().includes('back') || 
+          device.label.toLowerCase().includes('rear') ||
+          device.label.toLowerCase().includes('environment')
+        );
+        const selectedDeviceId = backCamera?.deviceId || videoInputDevices[0].deviceId;
+
+        // Start scanning
+        await reader.decodeFromVideoDevice(
+          selectedDeviceId,
           videoRef.current,
-          (result) => handleScanResult(result.data),
-          {
-            highlightScanRegion: true,
-            highlightCodeOutline: true,
-            preferredCamera: "environment",
+          (result, error) => {
+            if (result) {
+              console.log("QR Code escaneado:", result.getText());
+              handleScanResult(result.getText());
+            }
+            if (error && error.name !== 'NotFoundException') {
+              console.error("Scan error:", error);
+            }
           }
         );
-
-        scannerRef.current = scanner;
-        await scanner.start();
+        
         setIsScanning(true);
         setError(null);
         
       } catch (err: any) {
-        console.error("Scanner error:", err);
-        setError("Não foi possível acessar a câmera. Funciona melhor via HTTPS.");
+        console.error("Erro ao inicializar scanner:", err);
+        
+        let errorMessage = "Erro ao acessar a câmera.";
+        
+        if (err.name === 'NotAllowedError') {
+          errorMessage = "Permissão negada. Permita o acesso à câmera.";
+        } else if (err.name === 'NotFoundError') {
+          errorMessage = "Câmera não encontrada no dispositivo.";
+        } else if (err.name === 'NotSupportedError') {
+          errorMessage = "Câmera não é suportada neste navegador.";
+        } else if (err.name === 'NotReadableError') {
+          errorMessage = "Câmera está sendo usada por outro aplicativo.";
+        }
+        
+        setError(errorMessage);
+        toast({
+          title: "Erro de câmera",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
     };
 
-    // Add a small delay to ensure the video element is ready
-    const timer = setTimeout(initializeScanner, 100);
-    
+    initializeScanner();
+
     // Cleanup
     return () => {
-      clearTimeout(timer);
-      if (scannerRef.current) {
-        scannerRef.current.stop();
-        scannerRef.current.destroy();
+      if (readerRef.current) {
+        readerRef.current.reset();
       }
     };
   }, []);
@@ -108,8 +139,8 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
   };
 
   const handleClose = () => {
-    if (scannerRef.current) {
-      scannerRef.current.stop();
+    if (readerRef.current) {
+      readerRef.current.reset();
     }
     onClose();
   };
@@ -119,13 +150,11 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
       <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 max-w-sm mx-4 text-center">
           <CameraOff className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Erro na câmera</h3>
+          <h3 className="text-lg font-semibold mb-2">Câmera não disponível</h3>
           <p className="text-gray-600 mb-4">{error}</p>
-          <div className="space-y-2 text-sm text-gray-500 mb-4">
-            <p>• Verifique se permitiu acesso à câmera</p>
-            <p>• Tente recarregar a página</p>
-            <p>• Use outro navegador se necessário</p>
-          </div>
+          <p className="text-sm text-gray-500 mb-4">
+            Verifique se você permitiu o acesso à câmera para este site.
+          </p>
           <Button onClick={handleClose} className="w-full">
             Fechar
           </Button>
@@ -157,6 +186,7 @@ const QRScanner = ({ onClose }: QRScannerProps) => {
         className="w-full h-full object-cover"
         playsInline
         muted
+        autoPlay
       />
 
       {/* Overlay com instruções */}
