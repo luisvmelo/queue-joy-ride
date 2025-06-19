@@ -52,7 +52,11 @@ const SimpleReceptionistDashboard = () => {
         .eq('id', restaurantId)
         .single();
 
+      console.log('🕒 Restaurant wait time data:', { restaurantData, restaurantError, restaurantId });
+      
       const averageWaitTime = restaurantData?.average_wait_time || 15;
+      
+      console.log('⏱️ Final average wait time:', averageWaitTime);
 
       setStats({
         totalInQueue: waiting.length,
