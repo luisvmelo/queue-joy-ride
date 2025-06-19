@@ -98,41 +98,14 @@ const ReceptionistLogin = () => {
         localStorage.setItem(accessKey, 'true');
         localStorage.setItem(restaurantKey, matchingRestaurant.id);
         
-        // Verificar se foi salvo corretamente
-        if (localStorage.getItem(accessKey) !== 'true' || localStorage.getItem(restaurantKey) !== matchingRestaurant.id) {
-          throw new Error('localStorage não persistiu os dados');
-        }
-        
-        console.log('🔑 Receptionist access saved:', {
-          restaurantId: matchingRestaurant.id,
-          accessKey: `receptionist_access_${matchingRestaurant.id}`,
-          saved: localStorage.getItem(`receptionist_access_${matchingRestaurant.id}`),
-          restaurant: localStorage.getItem('receptionist_restaurant'),
-          allKeys: Object.keys(localStorage).filter(k => k.includes('receptionist'))
-        });
-        
-        // Usar sessionStorage como backup
-        sessionStorage.setItem(`receptionist_access_${matchingRestaurant.id}`, 'true');
-        sessionStorage.setItem(`receptionist_restaurant`, matchingRestaurant.id);
-        
-        console.log('🚀 Navigating to /receptionist with storage:', {
-          localStorage: {
-            restaurant: localStorage.getItem('receptionist_restaurant'),
-            access: localStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
-          },
-          sessionStorage: {
-            restaurant: sessionStorage.getItem('receptionist_restaurant'),
-            access: sessionStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
-          }
-        });
-        
         toast({
           title: "Acesso liberado",
           description: `Bem-vindo ao painel da recepção - ${matchingRestaurant.name}`,
         });
         
-        // Redirecionar imediatamente sem setTimeout
-        window.location.href = `/receptionist?auth=${matchingRestaurant.id}&t=${Date.now()}`;
+        // Usar abordagem simples baseada em URL - redirecionar diretamente para o dashboard com o ID do restaurante
+        console.log('🚀 Redirecting to receptionist dashboard for restaurant:', matchingRestaurant.id);
+        window.location.href = `/receptionist-dash/${matchingRestaurant.id}`;
       } catch (storageError) {
         console.error('Storage error:', storageError);
         toast({

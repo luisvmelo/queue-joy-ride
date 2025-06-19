@@ -17,6 +17,37 @@ export const useDashboardAuth = () => {
 
   const checkAuthentication = async () => {
     try {
+      // Verificar se está na rota simples /receptionist-dash/:restaurantId
+      const pathMatch = window.location.pathname.match(/^\/receptionist-dash\/(.+)$/);
+      if (pathMatch) {
+        const restaurantId = pathMatch[1];
+        console.log('🔍 Checking receptionist access via URL path:', restaurantId);
+        
+        // Validar se o restaurante existe
+        const { data: restaurant, error } = await supabase
+          .from('restaurants')
+          .select('id, name, is_active')
+          .eq('id', restaurantId)
+          .single();
+          
+        if (!error && restaurant?.is_active) {
+          console.log('✅ Receptionist access validated for restaurant:', restaurant.name);
+          setUser({ id: 'receptionist', email: 'receptionist@local', type: 'receptionist' });
+          setRestaurantId(restaurantId);
+          setLoading(false);
+          return;
+        } else {
+          console.error('❌ Restaurant validation failed:', { error, restaurant });
+          toast({
+            title: "Acesso negado",
+            description: "Restaurante não encontrado ou inativo",
+            variant: "destructive"
+          });
+          window.location.href = "/receptionist-login";
+          return;
+        }
+      }
+      
       // Aguardar um pouco para localStorage estar disponível (principalmente após redirecionamento)
       await new Promise(resolve => setTimeout(resolve, 50));
       
