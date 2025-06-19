@@ -94,10 +94,14 @@ const ReceptionistLogin = () => {
         description: `Bem-vindo ao painel da recepção - ${matchingRestaurant.name}`,
       });
       
-      // Aguardar um pouco para garantir que localStorage seja salvo
+      // Aguardar um pouco para garantir que localStorage seja salvo e usar replace
       setTimeout(() => {
-        navigate('/receptionist');
-      }, 100);
+        console.log('🚀 Navigating to /receptionist with localStorage:', {
+          restaurant: localStorage.getItem('receptionist_restaurant'),
+          access: localStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
+        });
+        window.location.href = '/receptionist';
+      }, 300);
       
     } catch (error) {
       console.error('Error:', error);
