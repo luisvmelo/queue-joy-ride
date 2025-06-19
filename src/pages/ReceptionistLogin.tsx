@@ -21,7 +21,30 @@ const ReceptionistLogin = () => {
     if (!restaurantCode.trim()) {
       toast({
         title: "Código obrigatório",
-        description: "Digite o código do seu restaurante",
+        description: "Digite o código no formato RECEP + 4 dígitos",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const code = restaurantCode.toUpperCase().trim();
+    
+    // Verificar se começa com RECEP
+    if (!code.startsWith('RECEP')) {
+      toast({
+        title: "Formato inválido",
+        description: "O código deve começar com RECEP seguido de 4 dígitos",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Extrair os 4 dígitos depois de RECEP
+    const digits = code.substring(5);
+    if (digits.length !== 4 || !/^\d{4}$/.test(digits)) {
+      toast({
+        title: "Formato inválido", 
+        description: "Digite RECEP seguido de exatamente 4 dígitos",
         variant: "destructive"
       });
       return;
@@ -43,7 +66,7 @@ const ReceptionistLogin = () => {
 
       // Encontrar restaurante que termina com o código digitado
       const matchingRestaurant = restaurants?.find(restaurant => 
-        restaurant.id.slice(-4).toUpperCase() === restaurantCode.toUpperCase()
+        restaurant.id.slice(-4) === digits
       );
 
       if (!matchingRestaurant) {
@@ -55,7 +78,7 @@ const ReceptionistLogin = () => {
         return;
       }
 
-      // Redirecionar para a página de acesso específica do restaurante
+      // Redirecionar diretamente para o dashboard da recepcionista
       navigate(`/receptionist-access/${matchingRestaurant.id}`);
       
     } catch (error) {
@@ -91,11 +114,11 @@ const ReceptionistLogin = () => {
               <Input
                 id="restaurantCode"
                 type="text"
-                placeholder="Ex: 3315"
+                placeholder="Ex: RECEP1234"
                 value={restaurantCode}
                 onChange={(e) => setRestaurantCode(e.target.value)}
                 className="text-center text-lg font-mono uppercase"
-                maxLength={4}
+                maxLength={9}
               />
             </div>
             
@@ -120,10 +143,10 @@ const ReceptionistLogin = () => {
 
             <div className="bg-blue-50 p-3 rounded-lg">
               <p className="text-xs text-blue-700 text-center">
-                💡 <strong>Dica:</strong> O código são os últimos 4 dígitos do ID do seu restaurante
+                💡 <strong>Formato:</strong> RECEP + 4 últimos dígitos do ID do restaurante
               </p>
               <p className="text-xs text-blue-600 text-center mt-1">
-                Exemplo: Para ID terminado em ...3315, digite <strong>3315</strong>
+                Exemplo: Para ID terminado em 3315, digite <strong>RECEP3315</strong>
               </p>
             </div>
           </form>

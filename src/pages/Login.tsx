@@ -128,14 +128,25 @@ const Login = () => {
                   Cadastre-se aqui
                 </Link>
               </p>
-              <Button
-                type="button"
-                variant="link"
-                onClick={() => navigate("/")}
-                disabled={loading}
-              >
-                Voltar ao início
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate("/receptionist-login")}
+                  disabled={loading}
+                  className="w-full"
+                >
+                  Acesso da Recepção
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={() => navigate("/")}
+                  disabled={loading}
+                >
+                  Voltar ao início
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>
