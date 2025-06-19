@@ -48,13 +48,13 @@ const SimpleReceptionistDashboard = () => {
       // Get restaurant's configured average wait time
       const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
-        .select('average_wait_time')
+        .select('avg_seat_time_minutes')
         .eq('id', restaurantId)
         .single();
 
       console.log('🕒 Restaurant wait time data:', { restaurantData, restaurantError, restaurantId });
       
-      const averageWaitTime = restaurantData?.average_wait_time || 15;
+      const averageWaitTime = restaurantData?.avg_seat_time_minutes || 15;
       
       console.log('⏱️ Final average wait time:', averageWaitTime);
 
