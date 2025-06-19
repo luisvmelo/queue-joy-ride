@@ -8,7 +8,7 @@ export const useDashboardAuth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email: string; type?: string } | null>(null);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,23 +50,26 @@ export const useDashboardAuth = () => {
           // Limpar acesso inválido
           localStorage.removeItem(`receptionist_access_${receptionistRestaurant}`);
           localStorage.removeItem('receptionist_restaurant');
+          sessionStorage.removeItem(`receptionist_access_${receptionistRestaurant}`);
+          sessionStorage.removeItem('receptionist_restaurant');
           
           toast({
             title: "Acesso expirado",
             description: "Restaurante não encontrado ou inativo",
             variant: "destructive"
           });
-          navigate("/");
+          navigate("/receptionist-login");
           return;
         }
 
-        setUser({ id: 'receptionist', email: 'receptionist@local' });
+        // Recepcionista tem acesso válido - não verificar Supabase auth
+        setUser({ id: 'receptionist', email: 'receptionist@local', type: 'receptionist' });
         setRestaurantId(receptionistRestaurant);
         setLoading(false);
         return;
       }
 
-      // Verificar autenticação normal do Supabase
+      // Verificar autenticação normal do Supabase apenas se não for recepcionista
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
@@ -110,12 +113,19 @@ export const useDashboardAuth = () => {
       setRestaurantId(restaurantIds[0].restaurant_id);
     } catch (error) {
       console.error('Authentication error:', error);
-      toast({
-        title: "Erro de autenticação",
-        description: "Ocorreu um erro durante a verificação de acesso",
-        variant: "destructive"
-      });
-      navigate("/login");
+      
+      // Se é acesso de recepcionista, redirecionar para login da recepcionista
+      let receptionistRestaurant = localStorage.getItem('receptionist_restaurant') || sessionStorage.getItem('receptionist_restaurant');
+      if (receptionistRestaurant) {
+        navigate("/receptionist-login");
+      } else {
+        toast({
+          title: "Erro de autenticação",
+          description: "Ocorreu um erro durante a verificação de acesso",
+          variant: "destructive"
+        });
+        navigate("/login");
+      }
     } finally {
       setLoading(false);
     }

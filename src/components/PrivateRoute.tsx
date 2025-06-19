@@ -8,12 +8,26 @@ interface PrivateRouteProps {
 }
 
 const PrivateRoute = ({ children }: PrivateRouteProps) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email: string; type?: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Verificar sessão atual
     const checkUser = async () => {
+      // Verificar se é acesso de recepcionista primeiro
+      const receptionistRestaurant = localStorage.getItem('receptionist_restaurant') || sessionStorage.getItem('receptionist_restaurant');
+      const receptionistAccess = receptionistRestaurant ? 
+        localStorage.getItem(`receptionist_access_${receptionistRestaurant}`) || 
+        sessionStorage.getItem(`receptionist_access_${receptionistRestaurant}`) : null;
+      
+      if (receptionistAccess && receptionistRestaurant) {
+        // Recepcionista está logada
+        setUser({ id: 'receptionist', email: 'receptionist@local', type: 'receptionist' });
+        setLoading(false);
+        return;
+      }
+
+      // Verificar autenticação normal do Supabase
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
       setLoading(false);
@@ -21,10 +35,21 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
 
     checkUser();
 
-    // Escutar mudanças de autenticação
+    // Escutar mudanças de autenticação apenas para Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setUser(session?.user || null);
+        // Verificar novamente se é recepcionista antes de atualizar
+        const receptionistRestaurant = localStorage.getItem('receptionist_restaurant') || sessionStorage.getItem('receptionist_restaurant');
+        const receptionistAccess = receptionistRestaurant ? 
+          localStorage.getItem(`receptionist_access_${receptionistRestaurant}`) || 
+          sessionStorage.getItem(`receptionist_access_${receptionistRestaurant}`) : null;
+        
+        if (receptionistAccess && receptionistRestaurant) {
+          // Manter usuário da recepcionista
+          setUser({ id: 'receptionist', email: 'receptionist@local', type: 'receptionist' });
+        } else {
+          setUser(session?.user || null);
+        }
         setLoading(false);
       }
     );

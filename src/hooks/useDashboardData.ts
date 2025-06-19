@@ -29,7 +29,7 @@ interface Stats {
   nextInLine: QueueParty | null;
 }
 
-export const useDashboardData = (restaurantId: string | null, user: any) => {
+export const useDashboardData = (restaurantId: string | null, user: { id: string; email: string; type?: string } | null) => {
   const { toast } = useToast();
   const [queueData, setQueueData] = useState<QueueParty[]>([]);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
