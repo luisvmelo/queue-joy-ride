@@ -78,21 +78,6 @@ const Index = () => {
             </p>
           </div>
 
-          {/* Receptionist Access Button */}
-          <div className="pt-8 border-t border-gray-200">
-            <div className="text-center mb-4">
-              <p className="text-xs text-gray-500 mb-3">Você é funcionário?</p>
-              <Button 
-                onClick={() => navigate("/receptionist-login")} 
-                variant="outline" 
-                size="sm"
-                className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Acesso da Recepção
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
 
