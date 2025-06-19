@@ -45,9 +45,18 @@ const SimpleReceptionistDashboard = () => {
         .eq('restaurant_id', restaurantId)
         .gte('created_at', new Date().toISOString().split('T')[0]);
 
+      // Get restaurant's configured average wait time
+      const { data: restaurantData, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('average_wait_time')
+        .eq('id', restaurantId)
+        .single();
+
+      const averageWaitTime = restaurantData?.average_wait_time || 15;
+
       setStats({
         totalInQueue: waiting.length,
-        averageWaitTime: 15, // Mock value
+        averageWaitTime: averageWaitTime,
         servedToday: totalToday.data?.length || 0
       });
     } catch (error) {
