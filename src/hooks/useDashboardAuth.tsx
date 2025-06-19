@@ -17,11 +17,41 @@ export const useDashboardAuth = () => {
 
   const checkAuthentication = async () => {
     try {
-      // Verificar se é acesso de recepcionista (localStorage primeiro, sessionStorage como backup)
+      // Aguardar um pouco para localStorage estar disponível (principalmente após redirecionamento)
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Verificar se é acesso de recepcionista (localStorage primeiro, sessionStorage como backup, URL como último recurso)
       let receptionistRestaurant = localStorage.getItem('receptionist_restaurant') || sessionStorage.getItem('receptionist_restaurant');
       let receptionistAccess = receptionistRestaurant ? 
         localStorage.getItem(`receptionist_access_${receptionistRestaurant}`) || 
         sessionStorage.getItem(`receptionist_access_${receptionistRestaurant}`) : null;
+      
+      // Verificar URL params como backup
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlAuthId = urlParams.get('auth');
+      if (!receptionistRestaurant && urlAuthId && window.location.pathname === '/receptionist') {
+        // Validar se o restaurante existe
+        const { data: restaurant, error } = await supabase
+          .from('restaurants')
+          .select('id, name, is_active')
+          .eq('id', urlAuthId)
+          .single();
+          
+        if (!error && restaurant?.is_active) {
+          receptionistRestaurant = urlAuthId;
+          receptionistAccess = 'true';
+          
+          // Tentar salvar no localStorage novamente
+          try {
+            localStorage.setItem(`receptionist_access_${urlAuthId}`, 'true');
+            localStorage.setItem('receptionist_restaurant', urlAuthId);
+            sessionStorage.setItem(`receptionist_access_${urlAuthId}`, 'true');
+            sessionStorage.setItem('receptionist_restaurant', urlAuthId);
+          } catch (storageError) {
+            console.warn('Still unable to save to storage:', storageError);
+          }
+        }
+      }
       
       console.log('🔍 Checking receptionist auth:', {
         receptionistRestaurant,
@@ -73,12 +103,22 @@ export const useDashboardAuth = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
-        toast({
-          title: "Acesso negado",
-          description: "Você precisa estar logado para acessar o dashboard",
-          variant: "destructive"
-        });
-        navigate("/login");
+        // Verificar se tentou acessar como recepcionista mas falhou
+        if (window.location.pathname === '/receptionist') {
+          toast({
+            title: "Acesso negado",
+            description: "Faça login como recepcionista",
+            variant: "destructive"
+          });
+          navigate("/receptionist-login");
+        } else {
+          toast({
+            title: "Acesso negado",
+            description: "Você precisa estar logado para acessar o dashboard",
+            variant: "destructive"
+          });
+          navigate("/login");
+        }
         return;
       }
 

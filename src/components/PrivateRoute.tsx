@@ -29,7 +29,11 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
 
       // Verificar autenticação normal do Supabase
       const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
+      setUser(session?.user ? { 
+        id: session.user.id, 
+        email: session.user.email || '', 
+        type: 'admin' 
+      } : null);
       setLoading(false);
     };
 
@@ -48,7 +52,11 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
           // Manter usuário da recepcionista
           setUser({ id: 'receptionist', email: 'receptionist@local', type: 'receptionist' });
         } else {
-          setUser(session?.user || null);
+          setUser(session?.user ? { 
+            id: session.user.id, 
+            email: session.user.email || '', 
+            type: 'admin' 
+          } : null);
         }
         setLoading(false);
       }

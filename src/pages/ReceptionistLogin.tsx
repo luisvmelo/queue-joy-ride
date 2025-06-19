@@ -81,19 +81,27 @@ const ReceptionistLogin = () => {
       // Salvar acesso na sessão de forma mais robusta
       try {
         // Limpar possíveis dados antigos
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('receptionist_')) {
-            localStorage.removeItem(key);
-          }
-        });
+        try {
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('receptionist_')) {
+              localStorage.removeItem(key);
+            }
+          });
+        } catch (cleanupError) {
+          console.warn('Error cleaning localStorage:', cleanupError);
+        }
         
-        // Salvar novos dados
-        localStorage.setItem(`receptionist_access_${matchingRestaurant.id}`, 'true');
-        localStorage.setItem(`receptionist_restaurant`, matchingRestaurant.id);
+        // Salvar novos dados com verificação
+        const accessKey = `receptionist_access_${matchingRestaurant.id}`;
+        const restaurantKey = 'receptionist_restaurant';
         
-        // Forçar persistência
-        localStorage.setItem('test', 'test');
-        localStorage.removeItem('test');
+        localStorage.setItem(accessKey, 'true');
+        localStorage.setItem(restaurantKey, matchingRestaurant.id);
+        
+        // Verificar se foi salvo corretamente
+        if (localStorage.getItem(accessKey) !== 'true' || localStorage.getItem(restaurantKey) !== matchingRestaurant.id) {
+          throw new Error('localStorage não persistiu os dados');
+        }
         
         console.log('🔑 Receptionist access saved:', {
           restaurantId: matchingRestaurant.id,
@@ -112,7 +120,7 @@ const ReceptionistLogin = () => {
         sessionStorage.setItem(`receptionist_access_${matchingRestaurant.id}`, 'true');
         sessionStorage.setItem(`receptionist_restaurant`, matchingRestaurant.id);
         
-        // Aguardar e redirecionar
+        // Aguardar e redirecionar com melhor timing
         setTimeout(() => {
           console.log('🚀 Navigating to /receptionist with storage:', {
             localStorage: {
@@ -124,8 +132,10 @@ const ReceptionistLogin = () => {
               access: sessionStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
             }
           });
-          window.location.href = '/receptionist';
-        }, 500);
+          
+          // Usar navigate com parâmetro de backup caso localStorage falhe
+          navigate(`/receptionist?auth=${matchingRestaurant.id}&t=${Date.now()}`);
+        }, 100);
       } catch (storageError) {
         console.error('Storage error:', storageError);
         toast({
