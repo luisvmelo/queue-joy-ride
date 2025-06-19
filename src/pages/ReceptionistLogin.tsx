@@ -78,8 +78,16 @@ const ReceptionistLogin = () => {
         return;
       }
 
-      // Redirecionar diretamente para o dashboard da recepcionista
-      navigate(`/receptionist-access/${matchingRestaurant.id}`);
+      // Salvar acesso na sessão e redirecionar diretamente para o dashboard
+      localStorage.setItem(`receptionist_access_${matchingRestaurant.id}`, 'true');
+      localStorage.setItem(`receptionist_restaurant`, matchingRestaurant.id);
+      
+      toast({
+        title: "Acesso liberado",
+        description: `Bem-vindo ao painel da recepção - ${matchingRestaurant.name}`,
+      });
+      
+      navigate('/receptionist');
       
     } catch (error) {
       console.error('Error:', error);
