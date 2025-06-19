@@ -78,30 +78,62 @@ const ReceptionistLogin = () => {
         return;
       }
 
-      // Salvar acesso na sessão e redirecionar diretamente para o dashboard
-      localStorage.setItem(`receptionist_access_${matchingRestaurant.id}`, 'true');
-      localStorage.setItem(`receptionist_restaurant`, matchingRestaurant.id);
-      
-      console.log('🔑 Receptionist access saved:', {
-        restaurantId: matchingRestaurant.id,
-        accessKey: `receptionist_access_${matchingRestaurant.id}`,
-        saved: localStorage.getItem(`receptionist_access_${matchingRestaurant.id}`),
-        restaurant: localStorage.getItem('receptionist_restaurant')
-      });
-      
-      toast({
-        title: "Acesso liberado",
-        description: `Bem-vindo ao painel da recepção - ${matchingRestaurant.name}`,
-      });
-      
-      // Aguardar um pouco para garantir que localStorage seja salvo e usar replace
-      setTimeout(() => {
-        console.log('🚀 Navigating to /receptionist with localStorage:', {
-          restaurant: localStorage.getItem('receptionist_restaurant'),
-          access: localStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
+      // Salvar acesso na sessão de forma mais robusta
+      try {
+        // Limpar possíveis dados antigos
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('receptionist_')) {
+            localStorage.removeItem(key);
+          }
         });
-        window.location.href = '/receptionist';
-      }, 300);
+        
+        // Salvar novos dados
+        localStorage.setItem(`receptionist_access_${matchingRestaurant.id}`, 'true');
+        localStorage.setItem(`receptionist_restaurant`, matchingRestaurant.id);
+        
+        // Forçar persistência
+        localStorage.setItem('test', 'test');
+        localStorage.removeItem('test');
+        
+        console.log('🔑 Receptionist access saved:', {
+          restaurantId: matchingRestaurant.id,
+          accessKey: `receptionist_access_${matchingRestaurant.id}`,
+          saved: localStorage.getItem(`receptionist_access_${matchingRestaurant.id}`),
+          restaurant: localStorage.getItem('receptionist_restaurant'),
+          allKeys: Object.keys(localStorage).filter(k => k.includes('receptionist'))
+        });
+        
+        toast({
+          title: "Acesso liberado",
+          description: `Bem-vindo ao painel da recepção - ${matchingRestaurant.name}`,
+        });
+        
+        // Usar sessionStorage como backup
+        sessionStorage.setItem(`receptionist_access_${matchingRestaurant.id}`, 'true');
+        sessionStorage.setItem(`receptionist_restaurant`, matchingRestaurant.id);
+        
+        // Aguardar e redirecionar
+        setTimeout(() => {
+          console.log('🚀 Navigating to /receptionist with storage:', {
+            localStorage: {
+              restaurant: localStorage.getItem('receptionist_restaurant'),
+              access: localStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
+            },
+            sessionStorage: {
+              restaurant: sessionStorage.getItem('receptionist_restaurant'),
+              access: sessionStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
+            }
+          });
+          window.location.href = '/receptionist';
+        }, 500);
+      } catch (storageError) {
+        console.error('Storage error:', storageError);
+        toast({
+          title: "Erro de armazenamento",
+          description: "Erro ao salvar dados. Tente novamente.",
+          variant: "destructive"
+        });
+      }
       
     } catch (error) {
       console.error('Error:', error);

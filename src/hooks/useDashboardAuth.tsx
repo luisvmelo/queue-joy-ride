@@ -17,14 +17,25 @@ export const useDashboardAuth = () => {
 
   const checkAuthentication = async () => {
     try {
-      // Verificar se é acesso de recepcionista (sem autenticação completa)
-      const receptionistRestaurant = localStorage.getItem('receptionist_restaurant');
-      const receptionistAccess = localStorage.getItem(`receptionist_access_${receptionistRestaurant}`);
+      // Verificar se é acesso de recepcionista (localStorage primeiro, sessionStorage como backup)
+      let receptionistRestaurant = localStorage.getItem('receptionist_restaurant') || sessionStorage.getItem('receptionist_restaurant');
+      let receptionistAccess = receptionistRestaurant ? 
+        localStorage.getItem(`receptionist_access_${receptionistRestaurant}`) || 
+        sessionStorage.getItem(`receptionist_access_${receptionistRestaurant}`) : null;
       
       console.log('🔍 Checking receptionist auth:', {
         receptionistRestaurant,
         receptionistAccess,
-        allLocalStorage: Object.keys(localStorage).filter(k => k.includes('receptionist'))
+        localStorage: {
+          restaurant: localStorage.getItem('receptionist_restaurant'),
+          access: receptionistRestaurant ? localStorage.getItem(`receptionist_access_${receptionistRestaurant}`) : null
+        },
+        sessionStorage: {
+          restaurant: sessionStorage.getItem('receptionist_restaurant'),
+          access: receptionistRestaurant ? sessionStorage.getItem(`receptionist_access_${receptionistRestaurant}`) : null
+        },
+        allLocalStorage: Object.keys(localStorage).filter(k => k.includes('receptionist')),
+        allSessionStorage: Object.keys(sessionStorage).filter(k => k.includes('receptionist'))
       });
       
       if (receptionistAccess && receptionistRestaurant) {
