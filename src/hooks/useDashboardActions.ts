@@ -220,14 +220,24 @@ export const useDashboardActions = (restaurantId: string | null, fetchQueueData:
 
   const handleSignOut = async () => {
     try {
-      // Limpar dados de recepcionista se existirem
+      // Detectar se é recepcionista ou admin
       const receptionistRestaurant = localStorage.getItem('receptionist_restaurant');
+      
       if (receptionistRestaurant) {
+        // É recepcionista - limpar apenas dados de recepcionista
+        console.log('🚪 Receptionist signing out');
         localStorage.removeItem(`receptionist_access_${receptionistRestaurant}`);
         localStorage.removeItem('receptionist_restaurant');
+        sessionStorage.removeItem(`receptionist_access_${receptionistRestaurant}`);
+        sessionStorage.removeItem('receptionist_restaurant');
+        
+        // Redirecionar para login de recepcionista
+        window.location.href = '/receptionist-login';
+      } else {
+        // É admin - fazer logout normal do Supabase
+        console.log('🚪 Admin signing out');
+        await supabase.auth.signOut();
       }
-      
-      await supabase.auth.signOut();
     } catch (error) {
       console.error('Error signing out:', error);
     }

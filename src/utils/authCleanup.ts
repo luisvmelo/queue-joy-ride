@@ -4,7 +4,7 @@
  */
 
 // Clean up authentication state and sensitive data
-export const cleanupAuthState = (): void => {
+export const cleanupAuthState = (preserveReceptionist: boolean = false): void => {
   // Remove Supabase auth tokens
   localStorage.removeItem('supabase.auth.token');
   sessionStorage.removeItem('supabase.auth.token');
@@ -21,8 +21,23 @@ export const cleanupAuthState = (): void => {
   localStorage.removeItem('user_email');
   localStorage.removeItem('temp_registration_data');
   
-  // Clear session storage
-  sessionStorage.clear();
+  // Clear session storage but preserve receptionist data if needed
+  if (preserveReceptionist) {
+    const receptionistKeys = Object.keys(sessionStorage).filter(key => key.includes('receptionist'));
+    const receptionistData = receptionistKeys.reduce((acc, key) => {
+      acc[key] = sessionStorage.getItem(key);
+      return acc;
+    }, {} as Record<string, string | null>);
+    
+    sessionStorage.clear();
+    
+    // Restore receptionist data
+    Object.entries(receptionistData).forEach(([key, value]) => {
+      if (value) sessionStorage.setItem(key, value);
+    });
+  } else {
+    sessionStorage.clear();
+  }
 };
 
 // Clean up specific party credentials

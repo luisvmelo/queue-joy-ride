@@ -53,9 +53,11 @@ export const useDashboardAuth = () => {
         }
       }
       
-      console.log('🔍 Checking receptionist auth:', {
+      console.log('🔍 Checking receptionist auth at', new Date().toISOString(), {
         receptionistRestaurant,
         receptionistAccess,
+        currentPath: window.location.pathname,
+        currentUrl: window.location.href,
         localStorage: {
           restaurant: localStorage.getItem('receptionist_restaurant'),
           access: receptionistRestaurant ? localStorage.getItem(`receptionist_access_${receptionistRestaurant}`) : null
@@ -65,7 +67,8 @@ export const useDashboardAuth = () => {
           access: receptionistRestaurant ? sessionStorage.getItem(`receptionist_access_${receptionistRestaurant}`) : null
         },
         allLocalStorage: Object.keys(localStorage).filter(k => k.includes('receptionist')),
-        allSessionStorage: Object.keys(sessionStorage).filter(k => k.includes('receptionist'))
+        allSessionStorage: Object.keys(sessionStorage).filter(k => k.includes('receptionist')),
+        urlParams: Object.fromEntries(new URLSearchParams(window.location.search))
       });
       
       if (receptionistAccess && receptionistRestaurant) {
@@ -77,6 +80,7 @@ export const useDashboardAuth = () => {
           .single();
 
         if (error || !restaurant?.is_active) {
+          console.error('❌ Restaurant validation failed:', { error, restaurant, receptionistRestaurant });
           // Limpar acesso inválido
           localStorage.removeItem(`receptionist_access_${receptionistRestaurant}`);
           localStorage.removeItem('receptionist_restaurant');
@@ -93,6 +97,18 @@ export const useDashboardAuth = () => {
         }
 
         // Recepcionista tem acesso válido - não verificar Supabase auth
+        console.log('✅ Receptionist access validated for restaurant:', restaurant.name);
+        
+        // Garantir que os dados estão salvos (redundância para evitar perda)
+        try {
+          localStorage.setItem(`receptionist_access_${receptionistRestaurant}`, 'true');
+          localStorage.setItem('receptionist_restaurant', receptionistRestaurant);
+          sessionStorage.setItem(`receptionist_access_${receptionistRestaurant}`, 'true');
+          sessionStorage.setItem('receptionist_restaurant', receptionistRestaurant);
+        } catch (storageError) {
+          console.warn('Storage save failed during validation:', storageError);
+        }
+        
         setUser({ id: 'receptionist', email: 'receptionist@local', type: 'receptionist' });
         setRestaurantId(receptionistRestaurant);
         setLoading(false);
