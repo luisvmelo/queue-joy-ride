@@ -82,12 +82,22 @@ const ReceptionistLogin = () => {
       localStorage.setItem(`receptionist_access_${matchingRestaurant.id}`, 'true');
       localStorage.setItem(`receptionist_restaurant`, matchingRestaurant.id);
       
+      console.log('🔑 Receptionist access saved:', {
+        restaurantId: matchingRestaurant.id,
+        accessKey: `receptionist_access_${matchingRestaurant.id}`,
+        saved: localStorage.getItem(`receptionist_access_${matchingRestaurant.id}`),
+        restaurant: localStorage.getItem('receptionist_restaurant')
+      });
+      
       toast({
         title: "Acesso liberado",
         description: `Bem-vindo ao painel da recepção - ${matchingRestaurant.name}`,
       });
       
-      navigate('/receptionist');
+      // Aguardar um pouco para garantir que localStorage seja salvo
+      setTimeout(() => {
+        navigate('/receptionist');
+      }, 100);
       
     } catch (error) {
       console.error('Error:', error);

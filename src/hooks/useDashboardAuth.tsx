@@ -21,6 +21,12 @@ export const useDashboardAuth = () => {
       const receptionistRestaurant = localStorage.getItem('receptionist_restaurant');
       const receptionistAccess = localStorage.getItem(`receptionist_access_${receptionistRestaurant}`);
       
+      console.log('🔍 Checking receptionist auth:', {
+        receptionistRestaurant,
+        receptionistAccess,
+        allLocalStorage: Object.keys(localStorage).filter(k => k.includes('receptionist'))
+      });
+      
       if (receptionistAccess && receptionistRestaurant) {
         // Validar se o restaurante ainda existe
         const { data: restaurant, error } = await supabase
