@@ -1,5 +1,5 @@
 
-# 🍽️ Restaurant Waitlist System
+# 🍽️ Restaurant Waitlist System - Line-up
 
 A modern, real-time digital waitlist system for restaurants. Guests can join the queue by scanning a QR code, receive live updates on their position, and get notified when their table is ready.
 
