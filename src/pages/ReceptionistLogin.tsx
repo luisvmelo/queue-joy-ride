@@ -111,31 +111,28 @@ const ReceptionistLogin = () => {
           allKeys: Object.keys(localStorage).filter(k => k.includes('receptionist'))
         });
         
+        // Usar sessionStorage como backup
+        sessionStorage.setItem(`receptionist_access_${matchingRestaurant.id}`, 'true');
+        sessionStorage.setItem(`receptionist_restaurant`, matchingRestaurant.id);
+        
+        console.log('🚀 Navigating to /receptionist with storage:', {
+          localStorage: {
+            restaurant: localStorage.getItem('receptionist_restaurant'),
+            access: localStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
+          },
+          sessionStorage: {
+            restaurant: sessionStorage.getItem('receptionist_restaurant'),
+            access: sessionStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
+          }
+        });
+        
         toast({
           title: "Acesso liberado",
           description: `Bem-vindo ao painel da recepção - ${matchingRestaurant.name}`,
         });
         
-        // Usar sessionStorage como backup
-        sessionStorage.setItem(`receptionist_access_${matchingRestaurant.id}`, 'true');
-        sessionStorage.setItem(`receptionist_restaurant`, matchingRestaurant.id);
-        
-        // Aguardar e redirecionar com melhor timing
-        setTimeout(() => {
-          console.log('🚀 Navigating to /receptionist with storage:', {
-            localStorage: {
-              restaurant: localStorage.getItem('receptionist_restaurant'),
-              access: localStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
-            },
-            sessionStorage: {
-              restaurant: sessionStorage.getItem('receptionist_restaurant'),
-              access: sessionStorage.getItem(`receptionist_access_${matchingRestaurant.id}`)
-            }
-          });
-          
-          // Usar navigate com parâmetro de backup caso localStorage falhe
-          navigate(`/receptionist?auth=${matchingRestaurant.id}&t=${Date.now()}`);
-        }, 100);
+        // Redirecionar imediatamente sem setTimeout
+        window.location.href = `/receptionist?auth=${matchingRestaurant.id}&t=${Date.now()}`;
       } catch (storageError) {
         console.error('Storage error:', storageError);
         toast({

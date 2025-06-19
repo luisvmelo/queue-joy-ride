@@ -92,7 +92,9 @@ export const useDashboardAuth = () => {
             description: "Restaurante não encontrado ou inativo",
             variant: "destructive"
           });
-          navigate("/receptionist-login");
+          
+          // Usar window.location.href para evitar problemas de navegação
+          window.location.href = "/receptionist-login";
           return;
         }
 
@@ -126,14 +128,14 @@ export const useDashboardAuth = () => {
             description: "Faça login como recepcionista",
             variant: "destructive"
           });
-          navigate("/receptionist-login");
+          window.location.href = "/receptionist-login";
         } else {
           toast({
             title: "Acesso negado",
             description: "Você precisa estar logado para acessar o dashboard",
             variant: "destructive"
           });
-          navigate("/login");
+          window.location.href = "/login";
         }
         return;
       }
@@ -161,7 +163,7 @@ export const useDashboardAuth = () => {
           description: "Você não tem permissão para acessar este dashboard",
           variant: "destructive"
         });
-        navigate("/");
+        window.location.href = "/";
         return;
       }
 
@@ -173,14 +175,14 @@ export const useDashboardAuth = () => {
       // Se é acesso de recepcionista, redirecionar para login da recepcionista
       let receptionistRestaurant = localStorage.getItem('receptionist_restaurant') || sessionStorage.getItem('receptionist_restaurant');
       if (receptionistRestaurant) {
-        navigate("/receptionist-login");
+        window.location.href = "/receptionist-login";
       } else {
         toast({
           title: "Erro de autenticação",
           description: "Ocorreu um erro durante a verificação de acesso",
           variant: "destructive"
         });
-        navigate("/login");
+        window.location.href = "/login";
       }
     } finally {
       setLoading(false);
