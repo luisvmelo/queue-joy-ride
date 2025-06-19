@@ -162,3 +162,4 @@ vercel --prod        # Deploy to Vercel
 **Built with ❤️ for better restaurant experiences**
 
 *Questions? Check out the [Supabase docs](https://supabase.com/docs) or reach out to the team!*
+# Force redeploy Wed Jun 18 21:47:50 -03 2025
