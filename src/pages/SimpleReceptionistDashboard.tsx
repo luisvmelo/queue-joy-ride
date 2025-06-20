@@ -457,10 +457,10 @@ const SimpleReceptionistDashboard = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center justify-end space-x-4">
                         {party.status === 'ready' && toleranceTimers[party.id] !== undefined && (
-                          <div className={`text-lg font-bold ${toleranceTimers[party.id] <= 60 ? 'text-red-600' : 'text-orange-600'}`}>
-                            ⏰ {formatTime(toleranceTimers[party.id])}
+                          <div className={`text-2xl font-bold ${toleranceTimers[party.id] <= 60 ? 'text-red-600' : 'text-orange-600'}`}>
+                            {formatTime(toleranceTimers[party.id])}
                           </div>
                         )}
                         {party.status === 'ready' && (
