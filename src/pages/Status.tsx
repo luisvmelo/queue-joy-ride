@@ -256,6 +256,7 @@ const Status = () => {
   useEffect(() => {
     if (!party || party.status === 'ready') return;
 
+    // Only calculate wait time if it's not already set or if position changed significantly
     const calculateWaitTime = () => {
       const avgTime = party.restaurant?.avg_seat_time_minutes || 45;
       const position = party.queue_position || 0;
@@ -266,14 +267,26 @@ const Status = () => {
         return;
       }
       
-      // Calculate estimated wait time in minutes
+      // Only recalculate if the timer is at 0 or position changed significantly
       const estimatedMinutes = position * avgTime;
-      setWaitTimeMinutes(Math.floor(estimatedMinutes));
-      setWaitTimeSeconds(0);
+      const currentTotal = waitTimeMinutes + (waitTimeSeconds / 60);
+      const newEstimate = Math.floor(estimatedMinutes);
+      
+      // Only reset if there's a significant difference (more than 2 minutes) or timer is at 0
+      if (currentTotal < 1 || Math.abs(newEstimate - currentTotal) > 2) {
+        console.log('🔄 Updating wait time calculation:', { 
+          position, 
+          avgTime, 
+          newEstimate, 
+          currentTotal 
+        });
+        setWaitTimeMinutes(newEstimate);
+        setWaitTimeSeconds(0);
+      }
     };
 
     calculateWaitTime();
-  }, [party]);
+  }, [party?.queue_position, party?.restaurant?.avg_seat_time_minutes, party?.status]);
 
   /* ------------------------------------------------------------------------ */
   /*  Wait Time Countdown Timer                                               */
