@@ -53,11 +53,12 @@ const SimpleReceptionistDashboard = () => {
         .eq('id', restaurantId)
         .single();
 
-      console.log('🕒 Restaurant wait time data:', { restaurantData, restaurantError, restaurantId });
+      console.log('🕒 Restaurant data:', { restaurantData, restaurantError, restaurantId });
       
       const averageWaitTime = restaurantData?.avg_seat_time_minutes || 15;
       
       console.log('⏱️ Final average wait time:', averageWaitTime);
+      console.log('🔧 Tolerance minutes:', restaurantData?.tolerance_minutes);
 
       setStats({
         totalInQueue: waiting.length,
@@ -69,6 +70,13 @@ const SimpleReceptionistDashboard = () => {
       const newTimers: Record<string, number> = {};
       const readyParties = data?.filter(p => p.status === 'ready' && p.notified_ready_at) || [];
       
+      console.log('🎯 Ready parties for timer calculation:', readyParties.map(p => ({
+        id: p.id,
+        name: p.name,
+        status: p.status,
+        notified_ready_at: p.notified_ready_at
+      })));
+      
       readyParties.forEach(party => {
         const toleranceMinutes = restaurantData?.tolerance_minutes || 5;
         const totalToleranceSeconds = (toleranceMinutes * 60) + 30; // Restaurant time + 30s safety margin
@@ -77,6 +85,15 @@ const SimpleReceptionistDashboard = () => {
         const currentTime = Date.now();
         const elapsedSeconds = Math.floor((currentTime - notifiedTime) / 1000);
         const remainingSeconds = Math.max(0, totalToleranceSeconds - elapsedSeconds);
+        
+        console.log(`⏰ Timer calculation for ${party.name}:`, {
+          toleranceMinutes,
+          totalToleranceSeconds,
+          notified_ready_at: party.notified_ready_at,
+          elapsedSeconds,
+          remainingSeconds,
+          formatted: `${Math.floor(remainingSeconds / 60)}:${(remainingSeconds % 60).toString().padStart(2, '0')}`
+        });
         
         newTimers[party.id] = remainingSeconds;
         
@@ -97,6 +114,7 @@ const SimpleReceptionistDashboard = () => {
         }
       });
       
+      console.log('🕐 Setting tolerance timers:', newTimers);
       setToleranceTimers(newTimers);
     } catch (error) {
       console.error('Error fetching queue data:', error);
@@ -433,20 +451,18 @@ const SimpleReceptionistDashboard = () => {
                             {party.party_size} pessoa(s) • {party.phone}
                           </p>
                           {party.status === 'ready' && (
-                            <div className="space-y-1">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Mesa Pronta - Tempo Limitado
-                              </span>
-                              {toleranceTimers[party.id] !== undefined && (
-                                <div className={`text-sm font-bold ${toleranceTimers[party.id] <= 60 ? 'text-red-600' : 'text-orange-600'}`}>
-                                  ⏰ {formatTime(toleranceTimers[party.id])}
-                                </div>
-                              )}
-                            </div>
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Mesa Pronta - Tempo Limitado
+                            </span>
                           )}
                         </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex items-center space-x-3">
+                        {party.status === 'ready' && toleranceTimers[party.id] !== undefined && (
+                          <div className={`text-lg font-bold ${toleranceTimers[party.id] <= 60 ? 'text-red-600' : 'text-orange-600'}`}>
+                            ⏰ {formatTime(toleranceTimers[party.id])}
+                          </div>
+                        )}
                         {party.status === 'ready' && (
                           <Button
                             size="sm"
