@@ -93,7 +93,7 @@ const SimpleReceptionistDashboard = () => {
         .from('parties')
         .update({ 
           status: 'called',
-          called_at: new Date().toISOString()
+          updated_at: new Date().toISOString()
         })
         .eq('id', nextParty.id);
 
