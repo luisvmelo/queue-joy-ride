@@ -21,6 +21,7 @@ const SimpleReceptionistDashboard = () => {
     servedToday: 0
   });
   const [activeTab, setActiveTab] = useState<string>('queue');
+  const [toleranceTimers, setToleranceTimers] = useState<Record<string, number>>({});
 
   const fetchQueueData = async () => {
     if (!restaurantId) return;
@@ -45,10 +46,10 @@ const SimpleReceptionistDashboard = () => {
         .eq('restaurant_id', restaurantId)
         .gte('created_at', new Date().toISOString().split('T')[0]);
 
-      // Get restaurant's configured average wait time
+      // Get restaurant's configured average wait time and tolerance
       const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
-        .select('avg_seat_time_minutes')
+        .select('avg_seat_time_minutes, tolerance_minutes')
         .eq('id', restaurantId)
         .single();
 
@@ -63,6 +64,40 @@ const SimpleReceptionistDashboard = () => {
         averageWaitTime: averageWaitTime,
         servedToday: totalToday.data?.length || 0
       });
+
+      // Calculate tolerance timers for ready parties
+      const newTimers: Record<string, number> = {};
+      const readyParties = data?.filter(p => p.status === 'ready' && p.notified_ready_at) || [];
+      
+      readyParties.forEach(party => {
+        const toleranceMinutes = restaurantData?.tolerance_minutes || 5;
+        const totalToleranceSeconds = (toleranceMinutes * 60) + 30; // Restaurant time + 30s safety margin
+        
+        const notifiedTime = new Date(party.notified_ready_at).getTime();
+        const currentTime = Date.now();
+        const elapsedSeconds = Math.floor((currentTime - notifiedTime) / 1000);
+        const remainingSeconds = Math.max(0, totalToleranceSeconds - elapsedSeconds);
+        
+        newTimers[party.id] = remainingSeconds;
+        
+        // Auto mark as no-show if time expired
+        if (remainingSeconds <= 0) {
+          console.log('⏰ Auto-marking party as no-show:', party.name);
+          supabase
+            .from('parties')
+            .update({ 
+              status: 'no_show',
+              removed_at: new Date().toISOString()
+            })
+            .eq('id', party.id)
+            .then(() => {
+              // Refresh data after auto no-show
+              setTimeout(() => fetchQueueData(), 1000);
+            });
+        }
+      });
+      
+      setToleranceTimers(newTimers);
     } catch (error) {
       console.error('Error fetching queue data:', error);
     }
@@ -153,6 +188,12 @@ const SimpleReceptionistDashboard = () => {
     window.location.href = '/receptionist-login';
   };
 
+  const formatTime = (totalSeconds: number): string => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     const validateAndLoad = async () => {
       if (!restaurantId) {
@@ -213,6 +254,27 @@ const SimpleReceptionistDashboard = () => {
 
     return () => clearInterval(interval);
   }, [restaurantId, toast]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setToleranceTimers(prevTimers => {
+        const newTimers = { ...prevTimers };
+        let hasChanges = false;
+        
+        Object.keys(newTimers).forEach(partyId => {
+          if (newTimers[partyId] > 0) {
+            newTimers[partyId] -= 1;
+            hasChanges = true;
+          }
+        });
+        
+        return hasChanges ? newTimers : prevTimers;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   if (loading) {
     return (
@@ -371,9 +433,16 @@ const SimpleReceptionistDashboard = () => {
                             {party.party_size} pessoa(s) • {party.phone}
                           </p>
                           {party.status === 'ready' && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Mesa Pronta - Tempo Limitado
-                            </span>
+                            <div className="space-y-1">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Mesa Pronta - Tempo Limitado
+                              </span>
+                              {toleranceTimers[party.id] !== undefined && (
+                                <div className={`text-sm font-bold ${toleranceTimers[party.id] <= 60 ? 'text-red-600' : 'text-orange-600'}`}>
+                                  ⏰ {formatTime(toleranceTimers[party.id])}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
