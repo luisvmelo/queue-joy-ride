@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, PhoneCall, Users, CheckCircle, XCircle } from "lucide-react";
+import { UserPlus, PhoneCall, Users, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ const SimpleReceptionistDashboard = () => {
         .from('parties')
         .select('*')
         .eq('restaurant_id', restaurantId)
-        .in('status', ['waiting', 'called'])
+        .in('status', ['waiting', 'ready'])
         .order('queue_position', { ascending: true });
 
       if (error) throw error;
@@ -92,7 +92,8 @@ const SimpleReceptionistDashboard = () => {
       const { error: updateError } = await supabase
         .from('parties')
         .update({ 
-          status: 'called',
+          status: 'ready',
+          notified_ready_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', nextParty.id);
@@ -101,7 +102,7 @@ const SimpleReceptionistDashboard = () => {
 
       toast({
         title: "Próximo chamado! 📞",
-        description: `${nextParty.name} foi chamado`,
+        description: `${nextParty.name} foi chamado e tem tempo limitado para chegar`,
       });
 
       fetchQueueData();
@@ -143,33 +144,6 @@ const SimpleReceptionistDashboard = () => {
     }
   };
 
-  const handleMarkNoShow = async (partyId: string) => {
-    try {
-      const { error } = await supabase
-        .from('parties')
-        .update({ 
-          status: 'no_show',
-          removed_at: new Date().toISOString()
-        })
-        .eq('id', partyId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Marcado como ausente",
-        description: "Cliente foi marcado como não compareceu",
-      });
-      
-      fetchQueueData();
-    } catch (error) {
-      console.error('Error marking no-show:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível marcar como ausente",
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleSignOut = () => {
     toast({
@@ -230,6 +204,14 @@ const SimpleReceptionistDashboard = () => {
     };
 
     validateAndLoad();
+
+    // Configurar atualizações automáticas a cada 5 segundos
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refreshing queue data...');
+      fetchQueueData();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, [restaurantId, toast]);
 
   if (loading) {
@@ -388,15 +370,15 @@ const SimpleReceptionistDashboard = () => {
                           <p className="text-sm text-gray-500">
                             {party.party_size} pessoa(s) • {party.phone}
                           </p>
-                          {party.status === 'called' && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              Chamado
+                          {party.status === 'ready' && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Mesa Pronta - Tempo Limitado
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="flex space-x-2">
-                        {party.status === 'called' && (
+                        {party.status === 'ready' && (
                           <Button
                             size="sm"
                             onClick={() => handleConfirmArrival(party.id)}
@@ -406,14 +388,6 @@ const SimpleReceptionistDashboard = () => {
                             Chegou
                           </Button>
                         )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleMarkNoShow(party.id)}
-                        >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Ausente
-                        </Button>
                       </div>
                     </div>
                   ))}
